@@ -192,7 +192,7 @@ def main():
                     if route_to_lcm(ip, rport, agent, text):
                         print(f"[mirror] routed mention → {agent}", file=sys.stderr)
 
-        # 2. LCM → Telegram: mirror agent messages (deduped)
+        # 2. LCM → Telegram + relay: mirror + forward to recipients
         for name, addr in roster.items():
             ip, rport = _resolve_addr(addr, default_port)
             since = last_seen.get(name, int(time.time()))
@@ -202,11 +202,28 @@ def main():
                 if msg_id in seen_ids:
                     continue
                 seen_ids.add(msg_id)
+
+                # Mirror to Telegram
                 formatted = format_message(msg)
                 if send_telegram(token, chat_id, formatted):
                     ts = msg.get("received_at", 0)
                     if ts > last_seen.get(name, 0):
                         last_seen[name] = ts
+
+                # Relay: forward to recipient if they have their own LCM
+                decrypted = msg.get("decrypted") or msg
+                recipient = decrypted.get("to", "")
+                if recipient and recipient != name and recipient in roster:
+                    r_addr = roster[recipient]
+                    r_ip, r_rport = _resolve_addr(r_addr, default_port)
+                    # Only relay if recipient has a different LCM from the inbox
+                    if (r_ip, r_rport) != (ip, rport):
+                        text = decrypted.get("text", "")
+                        sender = decrypted.get("from", decrypted.get("signer", "?"))
+                        relay_text = f"{sender}: {text}"
+                        if route_to_lcm(r_ip, r_rport, recipient, relay_text):
+                            print(f"[mirror] relayed → {recipient}",
+                                  file=sys.stderr)
 
         try:
             offset_file.write_text(str(tg_offset))
