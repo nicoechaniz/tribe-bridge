@@ -120,6 +120,8 @@ def verify_signature(payload_bytes: bytes, signature: str, signer: str) -> bool:
     """Verify SSH signature against allowed_signers (tribe + local)."""
     for signers_file in [ALLOWED_SIGNERS, LOCAL_ALLOWED_SIGNERS]:
         if not signers_file.exists():
+            if os.environ.get("TRIBE_BRIDGE_VERBOSE"):
+                sys.stderr.write(f"[verify] {signers_file} not found\n")
             continue
         sig_path = str(INBOX_DIR / f".verify-{os.getpid()}-{hash(signature) & 0xFFFFFFFF:08x}.sig")
         ensure_dirs()
@@ -133,6 +135,8 @@ def verify_signature(payload_bytes: bytes, signature: str, signer: str) -> bool:
             )
             if result.returncode == 0:
                 return True
+            if os.environ.get("TRIBE_BRIDGE_VERBOSE"):
+                sys.stderr.write(f"[verify] {signers_file.name}: {result.stderr.strip()}\n")
         except Exception:
             pass
         finally:
