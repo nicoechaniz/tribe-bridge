@@ -67,16 +67,22 @@ def fetch_telegram_mentions(token: str, offset: int, roster: Dict[str, str]) -> 
 
         mentioned = set()
         for word in text.split():
-            if word.startswith("@") and word[1:] in roster:
-                mentioned.add(word[1:])
+            name = word[1:] if word.startswith("@") else None
+            if name and name in roster:
+                mentioned.add(name)
+            elif word in ("@all", "@agents", "@humans"):
+                mentioned.update(roster.keys())
 
         if mentioned:
             sender_name = from_user.get("first_name", "alguien")
+            # Replace mentions with names (preserve readability)
+            clean = text
             for agent in mentioned:
-                # Replace @agent with agent (preserve name for readability)
-                clean = re.sub(rf"@{agent}\b", agent, text).strip()
-                body = f"{sender_name}: {clean}"
-                results.append((agent, body, uid))
+                clean = re.sub(rf"@{agent}\b", agent, clean)
+            clean = re.sub(r"@(all|agents|humans)\b", "todos", clean).strip()
+            body = f"{sender_name}: {clean}"
+            # Route as group: all recipients in one message
+            results.append((sorted(mentioned), body, uid))
 
     return results, new_offset + 1 if new_offset > offset else offset
 
@@ -174,16 +180,17 @@ def main():
     while True:
         # 1. Telegram → LCM: route @agent mentions
         mentions, tg_offset = fetch_telegram_mentions(token, tg_offset, roster)
-        for agent_name, text, update_id in mentions:
-            mention_key = (agent_name, update_id)
+        for recipients, text, update_id in mentions:
+            mention_key = (tuple(recipients), update_id)
             if mention_key in seen_mentions:
                 continue
             seen_mentions.add(mention_key)
-            addr = roster.get(agent_name, "")
-            if addr:
-                ip, rport = _resolve_addr(addr, default_port)
-                if route_to_lcm(ip, rport, agent_name, text):
-                    print(f"[mirror] routed mention → {agent_name}", file=sys.stderr)
+            for agent in recipients:
+                addr = roster.get(agent, "")
+                if addr:
+                    ip, rport = _resolve_addr(addr, default_port)
+                    if route_to_lcm(ip, rport, agent, text):
+                        print(f"[mirror] routed mention → {agent}", file=sys.stderr)
 
         # 2. LCM → Telegram: mirror agent messages (deduped)
         for name, addr in roster.items():
