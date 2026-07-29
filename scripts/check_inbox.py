@@ -13,10 +13,12 @@ import argparse, base64, json, os, subprocess, sys, tempfile, urllib.request
 from pathlib import Path
 
 def sign_get(path: str) -> tuple:
-    """Sign a GET request with the agent's SSH key."""
+    """Sign a GET request path (no query params) with the agent's SSH key."""
     key = os.path.expanduser(os.environ.get("TRIBE_SSH_KEY", "~/.ssh/id_ed25519"))
+    # Strip query params — server only verifies the base path
+    base_path = path.split("?")[0]
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-        f.write(f"GET {path}")
+        f.write(f"GET {base_path}")
         tmp = f.name
     try:
         subprocess.run(["ssh-keygen", "-Y", "sign", "-f", key, "-n", "tribe-bridge", tmp],
