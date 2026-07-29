@@ -39,6 +39,10 @@ def ensure_dirs():
 
 class BridgeHandler(BaseHTTPRequestHandler):
 
+    def __init__(self, *args, **kwargs):
+        ensure_dirs()
+        super().__init__(*args, **kwargs)
+
     def log_message(self, format, *args):
         """Silence access logs unless TRIBE_BRIDGE_VERBOSE is set."""
         if os.environ.get("TRIBE_BRIDGE_VERBOSE"):
