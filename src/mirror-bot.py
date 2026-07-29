@@ -70,7 +70,7 @@ def fetch_telegram_mentions(token: str, offset: int, roster: Dict[str, str]) -> 
             name = word[1:] if word.startswith("@") else None
             if name and name in roster:
                 mentioned.add(name)
-            elif word in ("@all", "@agents", "@humans"):
+            elif word == "@daimons":
                 mentioned.update(roster.keys())
 
         if mentioned:
@@ -79,7 +79,7 @@ def fetch_telegram_mentions(token: str, offset: int, roster: Dict[str, str]) -> 
             clean = text
             for agent in mentioned:
                 clean = re.sub(rf"@{agent}\b", agent, clean)
-            clean = re.sub(r"@(all|agents|humans)\b", "todos", clean).strip()
+            clean = re.sub(r"@daimons\b", "daimons", clean).strip()
             body = f"{sender_name}: {clean}"
             # Route as group: all recipients in one message
             results.append((sorted(mentioned), body, uid))
