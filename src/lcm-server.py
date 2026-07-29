@@ -49,6 +49,7 @@ except ImportError:
 BRIDGE_DIR = Path(os.environ.get("TRIBE_BRIDGE_DIR", os.path.expanduser("~/.tribe-bridge")))
 INBOX_DIR = BRIDGE_DIR / "inbox"
 ALLOWED_SIGNERS = BRIDGE_DIR / "allowed_signers"
+LOCAL_ALLOWED_SIGNERS = BRIDGE_DIR / "local_allowed_signers"
 PORT = int(os.environ.get("TRIBE_BRIDGE_PORT", "8585"))
 AGENT_NAME = os.environ.get("TRIBE_AGENT_NAME", "")
 SIGN_NAMESPACE = "tribe-bridge"
@@ -116,25 +117,27 @@ def decrypt_payload(enc: dict) -> str:
 
 
 def verify_signature(payload_bytes: bytes, signature: str, signer: str) -> bool:
-    if not ALLOWED_SIGNERS.exists():
-        return False
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".sig", delete=False) as sf:
-        sf.write(signature)
-        sig_path = sf.name
-
-    try:
-        result = subprocess.run(
-            ["ssh-keygen", "-Y", "verify", "-f", str(ALLOWED_SIGNERS),
-             "-I", signer, "-n", SIGN_NAMESPACE, "-s", sig_path],
-            input=payload_bytes.decode("utf-8"),
-            capture_output=True, text=True, timeout=10,
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
-    finally:
-        Path(sig_path).unlink(missing_ok=True)
+    """Verify SSH signature against allowed_signers (tribe + local)."""
+    for signers_file in [ALLOWED_SIGNERS, LOCAL_ALLOWED_SIGNERS]:
+        if not signers_file.exists():
+            continue
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".sig", delete=False) as sf:
+            sf.write(signature)
+            sig_path = sf.name
+        try:
+            result = subprocess.run(
+                ["ssh-keygen", "-Y", "verify", "-f", str(signers_file),
+                 "-I", signer, "-n", SIGN_NAMESPACE, "-s", sig_path],
+                input=payload_bytes.decode("utf-8"),
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode == 0:
+                return True
+        except Exception:
+            pass
+        finally:
+            Path(sig_path).unlink(missing_ok=True)
+    return False
 
 
 class BridgeHandler(BaseHTTPRequestHandler):
