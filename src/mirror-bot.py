@@ -182,9 +182,18 @@ def main():
     interval = int(os.environ.get("POLL_INTERVAL", "15"))
     last_seen: Dict[str, int] = {name: int(time.time()) for name in roster}
     tg_offset = 0
+    offset_file = Path(os.environ.get("TRIBE_BRIDGE_DIR",
+                     os.path.expanduser("~/.tribe-bridge"))) / ".tg_offset"
+    if offset_file.exists():
+        try:
+            tg_offset = int(offset_file.read_text().strip())
+        except Exception:
+            pass
 
     print(f"[mirror] starting — {len(roster)} agents, poll={interval}s, "
-          f"telegram={chat_id}, bidirectional", file=sys.stderr)
+          f"telegram={chat_id}, bidirectional, tg_offset={tg_offset}", file=sys.stderr)
+
+    seen_ids: set = set()  # dedup across agents sharing a hub
 
     while True:
         # 1. Telegram → LCM: route @agent mentions
@@ -195,16 +204,26 @@ def main():
                 if route_to_lcm(ip, port, agent_name, text):
                     print(f"[mirror] routed mention → {agent_name}", file=sys.stderr)
 
-        # 2. LCM → Telegram: mirror agent messages
+        # 2. LCM → Telegram: mirror agent messages (deduped)
         for name, ip in roster.items():
             since = last_seen.get(name, int(time.time()))
             messages = fetch_inbox(ip, port, since)
             for msg in messages:
+                msg_id = msg.get("id", "")
+                if msg_id in seen_ids:
+                    continue
+                seen_ids.add(msg_id)
                 formatted = format_message(msg)
                 if send_telegram(token, chat_id, formatted):
                     ts = msg.get("received_at", 0)
                     if ts > last_seen.get(name, 0):
                         last_seen[name] = ts
+
+        # persist tg_offset so restarts don't reprocess old messages
+        try:
+            offset_file.write_text(str(tg_offset))
+        except Exception:
+            pass
 
         time.sleep(interval)
 
