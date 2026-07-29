@@ -168,11 +168,16 @@ def main():
           f"tg_offset={tg_offset}", file=sys.stderr)
 
     seen_ids: set = set()
+    seen_mentions: set = set()  # dedup mention routing across cycles
 
     while True:
         # 1. Telegram → LCM: route @agent mentions
         mentions, tg_offset = fetch_telegram_mentions(token, tg_offset, roster)
-        for agent_name, text, _ in mentions:
+        for agent_name, text, update_id in mentions:
+            mention_key = (agent_name, update_id)
+            if mention_key in seen_mentions:
+                continue
+            seen_mentions.add(mention_key)
             addr = roster.get(agent_name, "")
             if addr:
                 ip, rport = _resolve_addr(addr, default_port)
