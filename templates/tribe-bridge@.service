@@ -1,0 +1,16 @@
+[Unit]
+Description=Tribe Bridge LCM server for %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=TRIBE_AGENT_NAME=%i
+Environment=TRIBE_BRIDGE_PORT=8585
+EnvironmentFile=%h/.tribe-bridge/%i.env
+ExecStart=%h/Projects/tribe-bridge/src/lcm-server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

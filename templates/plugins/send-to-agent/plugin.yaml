@@ -1,0 +1,4 @@
+name: send-to-agent
+version: 0.1.0
+description: Tribe Bridge inter-agent messaging — send messages to other agents and check inbox
+provides_hooks: []
