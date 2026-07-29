@@ -67,6 +67,27 @@ def _load_roster() -> Dict[str, dict]:
         return {}
 
 
+def _sign_data(data: str) -> tuple:
+    """Sign a string with SSH key. Returns (signature, signer_name)."""
+    key_path = os.path.expanduser(
+        os.environ.get("TRIBE_SSH_KEY", "~/.ssh/id_ed25519"))
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        f.write(data)
+        path = f.name
+    try:
+        result = subprocess.run(
+            ["ssh-keygen", "-Y", "sign", "-f", key_path, "-n", "tribe-bridge",
+             path],
+            capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            return "", ""
+        sig = Path(path + ".sig").read_text().strip()
+        return sig, os.environ.get("TRIBE_AGENT_NAME", "unknown")
+    finally:
+        Path(path).unlink(missing_ok=True)
+        Path(path + ".sig").unlink(missing_ok=True)
+
+
 def _sign_payload(payload: dict) -> tuple[str, str]:
     """Sign a JSON payload with SSH. Returns (signature_armored, signer_name).
 
@@ -134,18 +155,24 @@ def _send_lcm(target_ip: str, port: int, payload: dict,
 
 
 def _check_inbox(agent_filter: str = None, since: int = None) -> List[dict]:
-    """GET /inbox from this agent's own LCM server."""
+    """GET /inbox from this agent's own LCM server (authenticated)."""
     port = int(os.environ.get("TRIBE_BRIDGE_PORT", "8585"))
-    url = f"http://127.0.0.1:{port}/inbox"
+    url_path = "/inbox"
     params = []
     if agent_filter:
         params.append(f"agent={agent_filter}")
     if since:
         params.append(f"since={since}")
     if params:
-        url += "?" + "&".join(params)
+        url_path += "?" + "&".join(params)
+    url = f"http://127.0.0.1:{port}{url_path}"
+
+    # Sign the request for inbox auth
+    sig, signer = _sign_data(f"GET {url_path}")
+    headers = {"X-Tribe-Signature": sig, "X-Tribe-Signer": signer} if sig else {}
     try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read().decode())
             return data.get("messages", [])
     except Exception as exc:

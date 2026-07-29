@@ -197,6 +197,16 @@ class BridgeHandler(BaseHTTPRequestHandler):
         (INBOX_DIR / filename).write_text(json.dumps(msg_record), encoding="utf-8")
         self._respond(201, {"ok": True, "id": msg_record["id"]})
 
+    def _require_auth(self) -> bool:
+        """Require SSH signature on inbox reads. Returns True if valid."""
+        sig_header = self.headers.get("X-Tribe-Signature", "")
+        signer = self.headers.get("X-Tribe-Signer", "")
+        if not sig_header or not signer:
+            return False
+        # Sign the full request line: GET /inbox?params...
+        request_data = f"{self.command} {self.path}".encode("utf-8")
+        return verify_signature(request_data, sig_header, signer)
+
     def do_GET(self):
         parsed = urlparse(self.path)
 
@@ -206,6 +216,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/inbox/pending":
+            if not self._require_auth():
+                self._respond(401, {"error": "signature required"})
+                return
             params = parse_qs(parsed.query)
             agent_filter = params.get("agent", [None])[0]
             count = 0
@@ -221,6 +234,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/inbox":
+            if not self._require_auth():
+                self._respond(401, {"error": "signature required"})
+                return
             params = parse_qs(parsed.query)
             since = int(params.get("since", [0])[0])
             agent_filter = params.get("agent", [None])[0]

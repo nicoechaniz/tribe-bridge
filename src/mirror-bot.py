@@ -22,9 +22,13 @@ def _resolve_addr(addr: str, default_port: int) -> tuple:
     return addr, default_port
 
 def fetch_inbox(ip: str, port: int, since: int) -> list:
-    url = f"http://{ip}:{port}/inbox?since={since}&limit=50&decrypt=true"
+    url_path = f"/inbox?since={since}&limit=50&decrypt=true"
+    url = f"http://{ip}:{port}{url_path}"
+    sig, signer = _sign_data(f"GET {url_path}")
+    headers = {"X-Tribe-Signature": sig, "X-Tribe-Signer": signer} if sig else {}
     try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=5) as resp:
             return json.loads(resp.read().decode()).get("messages", [])
     except Exception:
         return []
@@ -161,7 +165,7 @@ def main():
 
     default_port = int(os.environ.get("TRIBE_BRIDGE_PORT", "8585"))
     interval = int(os.environ.get("POLL_INTERVAL", "15"))
-    last_seen: Dict[str, int] = {name: int(time.time()) for name in roster}
+    last_seen: Dict[str, int] = {name: 0 for name in roster}
     tg_offset = 0
     offset_file = Path(os.environ.get("TRIBE_BRIDGE_DIR",
                      os.path.expanduser("~/.tribe-bridge"))) / ".tg_offset"
