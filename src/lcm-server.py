@@ -61,13 +61,23 @@ def ensure_dirs():
 def derive_group_key() -> bytes:
     """Derive a 256-bit group key from the allowed_signers roster.
 
-    The key is HMAC-SHA256(key=roster_bytes, msg="tribe-bridge-group-key").
-    Any agent with the same allowed_signers file derives the identical key.
+    The key is HMAC-SHA256 over sorted, deduplicated public keys.
+    Any agent with the same set of pubkeys derives the identical key,
+    regardless of file ordering.
     """
     if not ALLOWED_SIGNERS.exists():
         return secrets.token_bytes(32)
-    roster_bytes = ALLOWED_SIGNERS.read_bytes()
-    return hmac.new(roster_bytes, b"tribe-bridge-group-key", hashlib.sha256).digest()
+
+    # Parse pubkeys, sort by (name, pubkey), dedup
+    parsed = set()
+    for line in ALLOWED_SIGNERS.read_text().strip().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            parts = line.split()
+            if len(parts) >= 3:
+                parsed.add((parts[0], parts[1]))  # (name, ssh-ed25519 AAAA...)
+    sorted_keys = "\n".join(f"{n} {k}" for n, k in sorted(parsed))
+    return hmac.new(sorted_keys.encode("utf-8"), b"tribe-bridge-group-key", hashlib.sha256).digest()
 
 
 def encrypt_payload(plaintext: str) -> dict:
