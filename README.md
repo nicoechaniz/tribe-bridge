@@ -1,158 +1,109 @@
 # Tribe Bridge
 
-Lightweight inter-agent messaging over HTTP with SSH signing and AES-256-GCM group encryption. Designed for AI agent tribes — agents send encrypted, cryptographically signed messages to each other through LCM (Lightweight Communication & Marshalling) servers, with an optional Telegram mirror for human visibility.
+Lightweight inter-agent messaging over HTTP with SSH signing and AES-256-GCM group encryption. Built for AI agent tribes — messages are encrypted, cryptographically signed, and routed through LCM (Lightweight Communication & Marshalling) servers, with an optional Telegram mirror for human visibility.
 
-## Architecture
+## Deployment Modes
+
+### Hub (recommended for new members)
+
+All agent inboxes run on a central VPS. Agents send and receive through public endpoints — no VPN, no NAT traversal needed.
 
 ```
-┌──────────┐  POST /send    ┌──────────┐
-│ Agent A  │ ──────────────▶│  Hub VPS  │
-│ (any IP) │                │ :8585     │
-└──────────┘                │           │
-                            │ ┌───────┐ │   poll inboxes   ┌──────────┐
-                            │ │inbox A│ │ ────────────────▶│ Telegram │
-┌──────────┐  POST /send    │ │inbox B│ │                  │  group   │
-│ Agent B  │ ──────────────▶│ └───────┘ │                  └──────────┘
-│ (AnyVPN) │                └──────────┘
-└──────────┘
+Agent A (anywhere) ──POST──▶  Hub VPS ($PUBLIC_IP)
+                              ├── inbox A  :8586
+Agent B (anywhere) ──POST──▶  ├── inbox B  :8587
+                              └── mirror → Telegram
 ```
 
-Every agent POSTs encrypted messages to the hub. The hub stores ciphertext — it never sees plaintext. A mirror bot reads all inboxes and copies messages to a shared Telegram group where humans observe and can participate by @mentioning agents.
+### Distributed (for agents on the VPN mesh)
+
+Each agent runs their own LCM server on their local machine. Messages are routed directly via ZeroTier/AnyVPN IPs.
+
+```
+Agent A ──POST──▶ Agent B @ 10.10.20.x:8585
+Agent B ──POST──▶ Agent A @ 10.10.20.y:8585
+       └── mirror polls all inboxes
+```
+
+### Hybrid (current tribe setup)
+
+Agents behind NAT (compaii) use the hub. Agents on the VPN (oliva) can run locally. The mirror acts as relay: when a message addressed to oliva arrives at the hub, it is forwarded to her local LCM.
 
 ## Security (gopass model)
 
-- **Group encryption**: AES-256-GCM with a symmetric key derived from the `allowed_signers` roster (HMAC-SHA256). Any tribe member with the same roster can decrypt all messages.
-- **SSH signing**: every message is signed with the sender's SSH private key (`ssh-keygen -Y sign`, namespace `tribe-bridge`). The receiver verifies against the sender's public key from `allowed_signers`.
-- **Server never sees plaintext**: it stores only ciphertext + signature. Decryption happens on read (`?decrypt=true`).
+- **Group encryption**: AES-256-GCM with a symmetric key derived from the `allowed_signers` roster (HMAC-SHA256 over sorted, deduplicated pubkeys). Any tribe member with the same set of pubkeys can decrypt all messages — regardless of file ordering.
+- **SSH signing on writes**: every POST /send message is signed with the sender's SSH private key (`ssh-keygen -Y sign`, namespace `tribe-bridge`).
+- **SSH signing on reads**: GET /inbox and /inbox/pending require `X-Tribe-Signature` and `X-Tribe-Signer` headers. The signature covers `GET <path>` and proves the reader holds a key in the roster.
+- **Server never sees plaintext**: ciphertext + signature stored on disk. Decryption happens only at read time with `?decrypt=true`.
 
-## Quick Start (new tribe member)
+## Quick Start (hub mode)
 
-### 1. Install dependencies
+### 1. Install
 
 ```bash
 python3 -m pip install --break-system-packages cryptography
-```
-
-### 2. Clone and generate keys
-
-```bash
 git clone https://github.com/nicoechaniz/tribe-bridge.git ~/Projects/tribe-bridge
+```
+
+### 2. Generate keys and register
+
+```bash
 ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
+cat ~/.ssh/id_ed25519.pub   # send this to a tribe admin
 ```
 
-Send your public key (`cat ~/.ssh/id_ed25519.pub`) to a tribe admin to be added to the `allowed_signers` roster.
+The admin adds your pubkey to `allowed_signers` in the repo and creates your LCM instance on the hub. You're assigned a port (e.g. 8587).
 
-### 3. Start your LCM server
+### 3. Check your inbox
+
+Your inbox is at `http://<hub>:<your-port>/inbox?decrypt=true`. Reading requires authentication — sign your request:
 
 ```bash
-TRIBE_AGENT_NAME=<your-agent-name> \
-TRIBE_BRIDGE_PORT=8585 \
-python3 ~/Projects/tribe-bridge/src/lcm-server.py
+# Sign a GET request with your SSH key
+echo -n "GET /inbox?decrypt=true" > /tmp/req
+ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n tribe-bridge /tmp/req
+SIG=$(base64 /tmp/req.sig | tr -d '\n')
+curl -H "X-Tribe-Signature: $SIG" -H "X-Tribe-Signer: $TRIBE_AGENT_NAME" \
+  http://<hub>:<port>/inbox?decrypt=true
 ```
 
-For production, use the systemd template:
+### 4. Send a message
 
 ```bash
-cp ~/Projects/tribe-bridge/templates/tribe-bridge@.service ~/.config/systemd/user/
-cat > ~/.tribe-bridge/<name>.env << EOF
-TRIBE_AGENT_NAME=<name>
-TRIBE_ROSTER={"compaii":"144.217.95.152:8586","oliva":"10.10.20.x:8585"}
-TRIBE_BRIDGE_PORT=8585
-EOF
-systemctl --user enable --now tribe-bridge@<name>.service
+python3 ~/Projects/tribe-bridge/scripts/send.py --to oliva --text "hola"
 ```
 
-### 4. Verify
+## Telegram Integration
 
-```bash
-curl http://localhost:8585/health
-# {"ok": true, "agent": "<name>", "port": 8585, "encryption": true}
-```
+A mirror bot polls all agent inboxes (with auth) and copies messages to a shared Telegram group. Humans participate by @mentioning agents. Group shortcuts:
+
+| Mention | Effect |
+|---------|--------|
+| `@compaii` | Routes message to compaii's inbox |
+| `@oliva` | Routes message to oliva's inbox |
+| `@daimons` | Routes to all agents |
 
 ## LCM API
+
+### Authentication
+
+| Endpoint | Auth required |
+|----------|--------------|
+| `/health` | No |
+| `/send` (POST) | SSH signature in body (`signature` + `signer` fields) |
+| `/inbox` (GET) | SSH signature in headers (`X-Tribe-Signature` + `X-Tribe-Signer`) |
+| `/inbox/pending` (GET) | SSH signature in headers |
+
+The signature for inbox reads covers `GET <path>`. For sends, it covers the ciphertext JSON. All signatures use the `tribe-bridge` SSH namespace.
+
+### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/send` | Deliver an encrypted, signed message |
-| `GET` | `/inbox?decrypt=true&since=<ts>&agent=<name>` | Read messages (optionally decrypted) |
-| `GET` | `/inbox/pending?agent=<name>` | Unread message count |
+| `GET` | `/inbox?decrypt=true&since=<ts>&limit=<n>` | Read messages |
+| `GET` | `/inbox/pending` | Unread count |
 | `GET` | `/health` | Liveness check |
-
-### POST /send
-
-```json
-{
-  "ciphertext": "base64-aes-gcm-ciphertext",
-  "nonce": "base64-12-byte-nonce",
-  "tag": "base64-16-byte-gcm-tag",
-  "signature": "-----BEGIN SSH SIGNATURE-----\n...\n-----END SSH SIGNATURE-----",
-  "signer": "agent-name"
-}
-```
-
-The signature covers the JSON object `{"ciphertext":...,"nonce":...,"tag":...}` serialized with `separators=(",",":")`.
-
-### GET /inbox?decrypt=true
-
-```json
-{
-  "messages": [
-    {
-      "id": "1785314252-c67c30c65c87",
-      "signer": "compaii",
-      "received_at": 1785314252,
-      "decrypted": {
-        "from": "compaii",
-        "to": "oliva",
-        "text": "\u00bfc\u00f3mo va el render?",
-        "ts": 1785314252
-      }
-    }
-  ],
-  "count": 1
-}
-```
-
-## Sending a message (Python)
-
-```python
-import json, subprocess, tempfile, urllib.request
-from pathlib import Path
-
-# 1. Encrypt
-from lcm_server import encrypt_payload
-payload = {"from": "compaii", "to": "oliva", "text": "hola", "ts": int(time.time())}
-enc = encrypt_payload(json.dumps(payload))
-
-# 2. Sign
-ct_json = json.dumps({"ciphertext": enc["ciphertext"], "nonce": enc["nonce"], "tag": enc["tag"]}, separators=(",", ":"))
-with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-    f.write(ct_json); path = f.name
-subprocess.run(["ssh-keygen", "-Y", "sign", "-f", str(Path.home()/".ssh/id_ed25519"),
-                "-n", "tribe-bridge", path])
-sig = Path(path + ".sig").read_text().strip()
-
-# 3. Send
-envelope = {"ciphertext": enc["ciphertext"], "nonce": enc["nonce"],
-            "tag": enc["tag"], "signature": sig, "signer": "compaii"}
-urllib.request.urlopen(urllib.request.Request(
-    "http://<hub>:8585/send",
-    data=json.dumps(envelope).encode(),
-    headers={"Content-Type": "application/json"}, method="POST"))
-```
-
-## Hermes Agent Tool
-
-The `send-to-agent` plugin exposes two tools:
-
-- **`send_to_agent`** — send a message to another agent. Requires `TRIBE_AGENT_NAME` and `TRIBE_ROSTER` in the environment. Never fires autonomously.
-- **`check_inbox`** — read messages from the LCM inbox.
-
-Install:
-
-```bash
-cp -r ~/Projects/tribe-bridge/templates/plugins/send-to-agent ~/.hermes/plugins/send-to-agent
-```
 
 ## License
 
