@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional
 
 def sign_data(data: str, key_path: Optional[str] = None) -> tuple:
-    key = key_path or str(Path.home() / ".ssh" / "id_ed25519")
+    key = key_path or os.environ.get("TRIBE_SSH_KEY") or str(Path.home() / ".ssh" / "id_ed25519")
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         f.write(data); path = f.name
     try:
