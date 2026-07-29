@@ -81,7 +81,9 @@ def _sign_data(data: str) -> tuple:
             capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
             return "", ""
-        sig = Path(path + ".sig").read_text().strip()
+        sig_armored = Path(path + ".sig").read_text().strip()
+        import base64
+        sig = base64.b64encode(sig_armored.encode()).decode()
         return sig, os.environ.get("TRIBE_AGENT_NAME", "unknown")
     finally:
         Path(path).unlink(missing_ok=True)

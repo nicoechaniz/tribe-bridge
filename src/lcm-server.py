@@ -203,9 +203,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
         signer = self.headers.get("X-Tribe-Signer", "")
         if not sig_header or not signer:
             return False
-        # Sign the full request line: GET /inbox?params...
+        # Signature is base64-encoded armored SSH signature for header transport
+        import base64 as _b64
+        try:
+            signature = _b64.b64decode(sig_header).decode("utf-8")
+        except Exception:
+            return False
         request_data = f"{self.command} {self.path}".encode("utf-8")
-        return verify_signature(request_data, sig_header, signer)
+        return verify_signature(request_data, signature, signer)
 
     def do_GET(self):
         parsed = urlparse(self.path)
