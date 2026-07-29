@@ -7,7 +7,7 @@ Usage:
 
 Requires TRIBE_AGENT_NAME or --from to be set.
 """
-import argparse, json, subprocess, sys, tempfile, time, urllib.request
+import argparse, json, os, subprocess, sys, tempfile, time, urllib.request
 import importlib.util
 from pathlib import Path
 from typing import Optional
@@ -30,12 +30,12 @@ def main():
     p = argparse.ArgumentParser(description="Send an encrypted message through Tribe Bridge")
     p.add_argument("--to", required=True, help="Recipient agent name")
     p.add_argument("--text", required=True, help="Message body")
-    p.add_argument("--from", dest="sender", help="Sender name (default: $TRIBE_AGENT_NAME)")
+    p.add_argument("--sender", help="Sender name (default: $TRIBE_AGENT_NAME)")
     p.add_argument("--hub", default="144.217.95.152:8585", help="Hub address (host:port)")
     p.add_argument("--key", help="SSH key path (default: ~/.ssh/id_ed25519)")
     args = p.parse_args()
 
-    agent_name = args.sender or sys.exit("Set TRIBE_AGENT_NAME or use --from")
+    agent_name = args.sender or os.environ.get("TRIBE_AGENT_NAME")
     hub_host, _, hub_port = args.hub.partition(":")
     hub_port = int(hub_port) if hub_port else 8585
 
