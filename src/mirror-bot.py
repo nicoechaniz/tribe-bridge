@@ -26,7 +26,7 @@ def load_roster() -> Dict[str, str]:
 
 
 def fetch_inbox(ip: str, port: int, since: int) -> List[dict]:
-    url = f"http://{ip}:{port}/inbox?since={since}&limit=50"
+    url = f"http://{ip}:{port}/inbox?since={since}&limit=50&decrypt=true"
     try:
         with urllib.request.urlopen(url, timeout=5) as resp:
             data = json.loads(resp.read().decode())
@@ -58,10 +58,12 @@ def send_telegram(token: str, chat_id: str, text: str):
 
 def format_message(msg: dict) -> str:
     """Format an LCM message for Telegram display."""
-    sender = msg.get("from", "?")
-    recipient = msg.get("to", "?")
-    text = msg.get("text", "")
-    reply = msg.get("reply_to", "")
+    # Mirror fetches with ?decrypt=true — use decrypted payload
+    decrypted = msg.get("decrypted") or msg
+    sender = decrypted.get("from") or msg.get("signer", "?")
+    recipient = decrypted.get("to", "?")
+    text = decrypted.get("text", "") or msg.get("ciphertext", "")[:40] + "..."
+    reply = decrypted.get("reply_to", "")
 
     # HTML-safe
     text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
