@@ -209,7 +209,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
             signature = _b64.b64decode(sig_header).decode("utf-8")
         except Exception:
             return False
-        request_data = f"{self.command} {self.path}".encode("utf-8")
+        # Sign path only (query params excluded — they can vary)
+        parsed_path = urlparse(self.path).path
+        request_data = f"{self.command} {parsed_path}".encode("utf-8")
         return verify_signature(request_data, signature, signer)
 
     def do_GET(self):
