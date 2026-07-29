@@ -73,7 +73,8 @@ def fetch_telegram_mentions(token: str, offset: int, roster: Dict[str, str]) -> 
         if mentioned:
             sender_name = from_user.get("first_name", "alguien")
             for agent in mentioned:
-                clean = re.sub(rf"@{agent}\b", "", text).strip()
+                # Replace @agent with agent (preserve name for readability)
+                clean = re.sub(rf"@{agent}\b", agent, text).strip()
                 body = f"{sender_name}: {clean}"
                 results.append((agent, body, uid))
 
