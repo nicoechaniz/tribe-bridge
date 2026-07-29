@@ -121,9 +121,9 @@ def verify_signature(payload_bytes: bytes, signature: str, signer: str) -> bool:
     for signers_file in [ALLOWED_SIGNERS, LOCAL_ALLOWED_SIGNERS]:
         if not signers_file.exists():
             continue
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".sig", delete=False) as sf:
-            sf.write(signature)
-            sig_path = sf.name
+        sig_path = str(INBOX_DIR / f".verify-{os.getpid()}-{hash(signature) & 0xFFFFFFFF:08x}.sig")
+        ensure_dirs()
+        Path(sig_path).write_text(signature)
         try:
             result = subprocess.run(
                 ["ssh-keygen", "-Y", "verify", "-f", str(signers_file),
