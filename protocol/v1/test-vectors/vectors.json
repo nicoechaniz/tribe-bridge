@@ -1,0 +1,1044 @@
+{
+  "cases": [
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "accept",
+        "endpoint": "accept"
+      },
+      "expected_plaintext": "{\"kind\":\"message\",\"text\":\"hola v1\"}",
+      "id": "valid-direct"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "group:daimons:9": [
+            "codex@localhost",
+            "oliva"
+          ]
+        },
+        "authorized_audiences": [
+          "group:daimons:9"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          },
+          "oliva/enc/3": {
+            "owner": "oliva",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "group:daimons:9"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 9,
+          "id": "daimons",
+          "type": "group"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-788d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "AyCRhfAK8qeY4pS_A6ePL33TeI9upxa60FKeoi9z7zvxY0JL0mc3PgcyNCVwkt--hBc5nixpxV-B3z4",
+          "nonce": "DA0ODxAREhMUFRYX"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "GZ8L_AxmyLk4LobonxsCFWa8q-pPQcIgwUu5-B70H1c",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "MBD3yP5OyL0YXUY1Psh5wbseSefEGai_s756lxPS0MroVUbH7LhRsVWasMzg2Sqn"
+          },
+          {
+            "enc": "Kgg_YZqD-ga9ia02v7PX9m0H42typuublKdQEdbk7BY",
+            "encryption_kid": "oliva/enc/3",
+            "id": "oliva",
+            "wrapped_cek": "hhvJBgqyEJa5OkwaBeRA4iHeST4WHbUzcPc6fiJ7mNNObQ7pilWAxjAO5bOlcugQ"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "Zs1_GCi4cPsOie2lF8W8SF1C9JCdholXxuOVn0Gdi869qGNcCPU5ig1C3I5CYbG_BEYQSqwMZ91feJ-wgTGhBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "accept",
+        "endpoint": "accept"
+      },
+      "expected_plaintext": "{\"kind\":\"message\",\"text\":\"hola daimons v1\"}",
+      "id": "valid-group"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "group:daimons:9": [
+            "codex@localhost",
+            "oliva"
+          ]
+        },
+        "authorized_audiences": [
+          "group:daimons:9"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          },
+          "oliva/enc/3": {
+            "owner": "oliva",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "group:daimons:9"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 9,
+          "id": "daimons",
+          "type": "group"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-788d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "AyCRhfAK8qeY4pS_A6ePL33TeI9upxa60FKeoi9z7zvxY0JL0mc3PgcyNCVwkt--hBc5nixpxV-B3z4",
+          "nonce": "DA0ODxAREhMUFRYX"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "GZ8L_AxmyLk4LobonxsCFWa8q-pPQcIgwUu5-B70H1c",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "MBD3yP5OyL0YXUY1Psh5wbseSefEGai_s756lxPS0MroVUbH7LhRsVWasMzg2Sqn"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "mlt7hWsc0U82SEG-It_dGhLBeWQKuwJOFKJtMjLWETVIATXFp94eZ-QhD8GDdrz4Wqz-ABotMz4VreYgt3EfCA"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "invalid_recipient_set",
+        "endpoint": "invalid_recipient_set"
+      },
+      "id": "group-member-omitted"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0BBQkNERUZHSElKS0xNTk9Q",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "invalid_signature",
+        "endpoint": "invalid_signature"
+      },
+      "id": "tampered-ciphertext"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:oliva:1"
+        ],
+        "receiver_id": "oliva",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "accept",
+        "endpoint": "wrong_audience"
+      },
+      "id": "wrong-endpoint-audience"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [
+          "compaii:01941f29-7c00-748d-8567-89abcdef0123"
+        ],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "replay",
+        "endpoint": "replay"
+      },
+      "id": "replay"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735693200000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "expired",
+        "endpoint": "expired"
+      },
+      "id": "expired"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "compromised"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "revoked_key",
+        "endpoint": "revoked_key"
+      },
+      "id": "compromised-signing-key"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "malformed_envelope",
+        "endpoint": "malformed_envelope"
+      },
+      "id": "malformed-missing-payload"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 0
+      },
+      "expected": {
+        "broker": "unsupported_version",
+        "endpoint": "unsupported_version"
+      },
+      "id": "v0-envelope"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB0_AES256GCM_GROUP",
+        "version": 1
+      },
+      "expected": {
+        "broker": "downgrade_rejected",
+        "endpoint": "downgrade_rejected"
+      },
+      "id": "suite-downgrade"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "oliva",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "invalid_recipient_set",
+        "endpoint": "invalid_recipient_set"
+      },
+      "id": "recipient-audience-mismatch"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {
+          "compaii/sig/7": {
+            "not_after_ms": 1735779600000,
+            "not_before_ms": 1735603200000,
+            "owner": "compaii",
+            "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+            "status": "active"
+          }
+        }
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "unauthorized_audience",
+        "endpoint": "accept"
+      },
+      "expected_plaintext": "{\"kind\":\"message\",\"text\":\"hola v1\"}",
+      "id": "unauthorized-sender-for-audience"
+    },
+    {
+      "context": {
+        "audience_members": {
+          "direct:codex@localhost:4": [
+            "codex@localhost"
+          ]
+        },
+        "authorized_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "encryption_keys": {
+          "codex@localhost/enc/4": {
+            "owner": "codex@localhost",
+            "status": "active"
+          }
+        },
+        "now_ms": 1735689660000,
+        "receiver_audiences": [
+          "direct:codex@localhost:4"
+        ],
+        "receiver_id": "codex@localhost",
+        "seen": [],
+        "signing_keys": {}
+      },
+      "envelope": {
+        "audience": {
+          "epoch": 4,
+          "id": "codex@localhost",
+          "type": "direct"
+        },
+        "content_type": "application/vnd.tribe.message+json",
+        "expires_at_ms": 1735693200000,
+        "issued_at_ms": 1735689600000,
+        "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
+        "payload": {
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "nonce": "AAECAwQFBgcICQoL"
+        },
+        "protocol": "tribe",
+        "recipients": [
+          {
+            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
+            "encryption_kid": "codex@localhost/enc/4",
+            "id": "codex@localhost",
+            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+          }
+        ],
+        "sender": {
+          "id": "compaii",
+          "signing_kid": "compaii/sig/7"
+        },
+        "signature": {
+          "alg": "Ed25519",
+          "kid": "compaii/sig/7",
+          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+        },
+        "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
+        "version": 1
+      },
+      "expected": {
+        "broker": "unknown_key",
+        "endpoint": "unknown_key"
+      },
+      "id": "unknown-signing-key"
+    }
+  ],
+  "format": "tribe-v1-conformance-vectors/1",
+  "test_recipient_private_keys": {
+    "codex@localhost": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A",
+    "oliva": "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2A"
+  },
+  "test_signing_private_seed": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+  "test_signing_public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+  "valid_direct_canonical_unsigned_sha256": "84d336ffc5418e9c56cd1517e6c2b81afe8615e97233fe7bb6c172e8ce484b1c",
+  "valid_direct_envelope_sha256": "e282462b0501f6411e498268c2f4636849331031f60ada267865ebdbacf9b5f7",
+  "valid_direct_signature_preimage_sha256": "25173a2350f72a0d7676c5ef60b8ff7c90722039f7ca2e66d531acc596525f6d",
+  "warning": "All keys and byte strings are public test material; HPKE encapsulations are randomized."
+}

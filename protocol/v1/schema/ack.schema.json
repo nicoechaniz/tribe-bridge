@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tribe.invalid/protocol/v1/ack.schema.json",
+  "title": "Tribe v1 processing acknowledgement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "receiver_id",
+    "message_id",
+    "lease_id",
+    "issued_at_ms",
+    "envelope_sha256",
+    "outcome",
+    "receiver_signing_kid",
+    "signature"
+  ],
+  "properties": {
+    "schema": {"const": "tribe-ack/v1"},
+    "receiver_id": {"$ref": "#/$defs/identifier"},
+    "message_id": {"type": "string", "format": "uuid"},
+    "lease_id": {"type": "string", "format": "uuid"},
+    "issued_at_ms": {"type": "integer", "minimum": 0},
+    "envelope_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "outcome": {
+      "enum": ["processed", "retryable_failed", "terminal_failed"]
+    },
+    "receiver_signing_kid": {"$ref": "#/$defs/identifier"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "kid", "value"],
+      "properties": {
+        "alg": {"const": "Ed25519"},
+        "kid": {"$ref": "#/$defs/identifier"},
+        "value": {"$ref": "#/$defs/base64url"}
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9._@/-]{0,126}[a-z0-9])?$"
+    },
+    "base64url": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  }
+}
