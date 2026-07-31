@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import urllib.request
 import unittest
 from pathlib import Path
 
@@ -91,9 +92,19 @@ class TribeV1IntegrationTests(unittest.TestCase):
         server.service = service
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
-        self.addCleanup(server.server_close)
-        self.addCleanup(server.shutdown)
         endpoint = f"http://127.0.0.1:{server.server_address[1]}"
+
+        def stop_server():
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+            self.assertFalse(thread.is_alive(), "test HTTP server did not stop")
+
+        self.addCleanup(stop_server)
+        with urllib.request.urlopen(
+            f"{endpoint}/v1/health", timeout=5
+        ) as response:
+            self.assertEqual(response.status, 200)
         return service, endpoint
 
     def direct_envelope(self, ttl_ms=60_000):
@@ -278,7 +289,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
             keys=self.alice,
             outbox=outbox,
             now_ms=NOW,
-            timeout=0.2,
+            timeout=2,
         )
         self.assertEqual(result["endpoint"], hub)
         self.assertEqual(len(result["fallbacks"]), 1)
