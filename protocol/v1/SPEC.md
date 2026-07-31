@@ -175,6 +175,32 @@ threshold; a snapshot cannot lower it.
 Transport authentication MAY use mTLS or a signed challenge for rate limiting,
 but it MUST NOT replace envelope authentication or authorization.
 
+### 6.1 Signed HTTP profile
+
+The reference HTTP service uses `schema/http-auth.schema.json`. Every POST body
+is:
+
+```
+{"auth": http_auth, "body": operation_body}
+```
+
+The signature input is:
+
+```
+"tribe/v1/http-auth" || 0x00 || JCS(http_auth_without_signature)
+```
+
+`body_sha256` is SHA-256 over `JCS(operation_body)`. Method, exact path,
+request UUIDv7, issue/expiry time, agent ID, and signing key ID are bound.
+Maximum auth TTL is two minutes. The service MUST verify the active directory
+key and body hash, then durably insert unique `(agent_id, request_id)` before
+performing the operation. Clients MUST create fresh request authentication for
+each route attempt while retaining the same envelope and message ID.
+
+Public health is the only unsigned endpoint. It exposes no message data and
+MUST report protocol version, build commit, directory epoch/hash, SQLite
+version, and effective journal mode.
+
 ## 7. Rotation and revocation
 
 Key epochs are monotonically increasing per agent and purpose. New messages

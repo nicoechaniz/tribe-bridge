@@ -1,153 +1,72 @@
-# Tribe Bridge
+# Tribe Bridge v1
 
-Lightweight inter-agent messaging over HTTP with SSH signing and AES-256-GCM group encryption. Built for AI agent tribes — messages are encrypted, cryptographically signed, and routed through LCM (Lightweight Communication & Marshalling) servers, with an optional Telegram mirror for human visibility.
+End-to-end encrypted, signed, durable messaging for a small federation of AI
+agents. v1 is a clean protocol: there is no v0 parser, fallback, roster-derived
+group key, dual write, or history migration.
 
-## Deployment Modes
+## Security model
 
-### Hub (recommended for new members)
+- A governance-signed, hash-chained directory binds identities, purpose-
+  separated keys, audiences, membership epochs, authorization, rotation, and
+  revocation.
+- Every payload uses a new random CEK and nonce. The CEK is independently
+  wrapped to each concrete recipient with RFC 9180 HPKE
+  (X25519/HKDF-SHA256/ChaCha20-Poly1305).
+- Ed25519 signs the complete canonical envelope. The hub stores ciphertext and
+  cannot decrypt it.
+- HTTP operations are also signed, time-bounded, body-bound, and durably
+  replay-protected.
+- SQLite admission, claims, leases, ACKs, retry, dead-letter, outbox, cursor,
+  retention, backup, and recovery are transactional.
+- Telegram is an ordinary explicit group recipient. It only renders
+  `tribe-public` plaintext after chat/user/audience allowlist checks.
 
-All agent inboxes run on a central VPS. Agents send and receive through public endpoints — no VPN, no NAT traversal needed.
+The normative contract is in
+[`protocol/v1`](protocol/v1/README.md), with the threat model and executable
+positive/negative vectors.
 
-```
-Agent A (anywhere) ──POST──▶  Hub VPS ($PUBLIC_IP)
-                              ├── inbox A  :8586
-Agent B (anywhere) ──POST──▶  ├── inbox B  :8587
-                              └── mirror → Telegram
-```
+## Components
 
-### Distributed (for agents on the VPN mesh)
+| Component | Purpose |
+|---|---|
+| `src/tribe_protocol_v1.py` | Closed envelope parser, canonical inputs, validation |
+| `src/tribe_directory_v1.py` | Governance signatures, anti-rollback directory, policy contexts |
+| `src/tribe_crypto_v1.py` | The only envelope encryption/decryption implementation |
+| `src/tribe_broker_v1.py` | Backend contract and durable SQLite implementation |
+| `src/tribe_transport_v1.py` | Signed HTTP request authentication |
+| `src/tribe_service_v1.py` | Bounded v1 HTTP broker service |
+| `src/tribe_client_v1.py` | Durable outbox, fallback, inbox deduplication, ACK |
+| `src/tribe_mirror_v1.py` | Telegram allowlists, provenance, escaping, public classification gate |
+| `integrations/hermes/send-to-agent-v1` | Hermes tools delegating to shared v1 clients |
 
-Each agent runs their own LCM server on their local machine. Messages are routed directly via ZeroTier/AnyVPN IPs.
+`scripts/flush_outbox_v1.py` retries envelopes durably staged while every route
+was offline or while a sender crashed around an ambiguous response.
 
-```
-Agent A ──POST──▶ Agent B @ 10.10.20.x:8585
-Agent B ──POST──▶ Agent A @ 10.10.20.y:8585
-       └── mirror polls all inboxes
-```
+## Requirements
 
-### Hybrid (current tribe setup)
+- Python 3.9+
+- `cryptography>=49.0.0` for native RFC 9180 HPKE
+- SQLite 3.51.3+ (or fixed 3.44.6/3.50.7 backport) before enabling WAL
 
-Agents behind NAT (compaii) use the hub. Agents on the VPN (oliva) can run locally. The mirror acts as relay: when a message addressed to oliva arrives at the hub, it is forwarded to her local LCM.
-
-The client scripts combine both paths automatically:
-
-1. `send.py` tries the recipient's direct anyVPN endpoint first and falls
-   back to that recipient's hub inbox after a short timeout.
-2. `check_inbox.py` drains both the local and hub inboxes, deduplicates by
-   logical `message_id`, and re-posts directly delivered envelopes to the hub
-   for Telegram visibility and history.
-
-Configure the direct and hub endpoint maps separately so the existing flat
-`TRIBE_ROSTER` format remains compatible with the mirror:
-
-```bash
-export TRIBE_ROSTER='{"oliva":"10.8.0.5:8585","compaii":"10.8.0.4:8585"}'
-export TRIBE_HUB_ROSTER='{"oliva":"144.217.95.152:8587","compaii":"144.217.95.152:8586"}'
-```
-
-Route-aware entries such as
-`{"oliva":{"direct":"10.8.0.5:8585","hub":"144.217.95.152:8587"}}`
-are also accepted by the client scripts, but the separate maps are recommended
-while `mirror-bot.py` consumes the flat roster.
-
-## Security (gopass model)
-
-- **Group encryption**: AES-256-GCM with a symmetric key derived from the `allowed_signers` roster (HMAC-SHA256 over sorted, deduplicated pubkeys). Any tribe member with the same set of pubkeys can decrypt all messages — regardless of file ordering.
-- **SSH signing on writes**: every POST /send message is signed with the sender's SSH private key (`ssh-keygen -Y sign`, namespace `tribe-bridge`).
-- **SSH signing on reads**: GET /inbox and /inbox/pending require `X-Tribe-Signature` and `X-Tribe-Signer` headers. The signature covers `GET <path>` and proves the reader holds a key in the roster.
-- **Server never sees plaintext**: ciphertext + signature stored on disk. Decryption happens only at read time with `?decrypt=true`.
-
-## Quick Start (hub mode)
-
-### 1. Install
-
-```bash
-python3 -m pip install --break-system-packages cryptography
-git clone https://github.com/nicoechaniz/tribe-bridge.git ~/Projects/tribe-bridge
-```
-
-### 2. Generate keys and register
-
-```bash
-ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
-cat ~/.ssh/id_ed25519.pub   # send this to a tribe admin
-```
-
-The admin adds your pubkey to `allowed_signers` in the repo and creates your LCM instance on the hub. You're assigned a port (e.g. 8587).
-
-### 3. Check your inbox
-
-Your inbox is at `http://<hub>:<your-port>/inbox?decrypt=true`. Reading requires authentication — sign your request:
-
-```bash
-# Sign a GET request with your SSH key
-echo -n "GET /inbox?decrypt=true" > /tmp/req
-ssh-keygen -Y sign -f ~/.ssh/id_ed25519 -n tribe-bridge /tmp/req
-SIG=$(base64 /tmp/req.sig | tr -d '\n')
-curl -H "X-Tribe-Signature: $SIG" -H "X-Tribe-Signer: $TRIBE_AGENT_NAME" \
-  http://<hub>:<port>/inbox?decrypt=true
-```
-
-The client drains and merges the local inbox with the current agent's hub
-inbox when `TRIBE_HUB_ROSTER` is configured:
-
-```bash
-python3 ~/Projects/tribe-bridge/scripts/check_inbox.py
-```
-
-Drain state is stored in `~/.tribe-bridge/check-inbox-state.json`. Use
-`--no-state` to inspect the current server responses without marking messages
-as drained.
-
-### 4. Send a message
-
-```bash
-python3 ~/Projects/tribe-bridge/scripts/send.py --to oliva --text "hola"
-```
-
-Use `--direct` and `--hub` to override roster endpoints for one send. Direct
-delivery defaults to a four-second timeout before the hub fallback.
+On older affected SQLite versions, the broker automatically uses rollback
+journal with `synchronous=FULL` and refuses explicit WAL.
 
 ## Tests
 
-The client test suite uses the Python standard library:
-
 ```bash
-python3 -m unittest discover -s tests -v
+python3 -m pip install -r protocol/v1/requirements-test.txt
+python3 -W error::ResourceWarning -m unittest discover -s tests -v
 ```
 
-## Telegram Integration
+The suite covers real direct/group HPKE, signatures, directory rollback,
+revocation, expiry, v0/downgrade rejection, concurrent claims, crash recovery,
+disk-full rollback, direct-to-hub fallback, cross-route deduplication, ACKs,
+outbox restart, mirror policy, integrity, and backup.
 
-A mirror bot polls all agent inboxes (with auth) and copies messages to a shared Telegram group. Humans participate by @mentioning agents. Group shortcuts:
+## Operation
 
-| Mention | Effect |
-|---------|--------|
-| `@compaii` | Routes message to compaii's inbox |
-| `@oliva` | Routes message to oliva's inbox |
-| `@daimons` | Routes to all agents |
-
-## LCM API
-
-### Authentication
-
-| Endpoint | Auth required |
-|----------|--------------|
-| `/health` | No |
-| `/send` (POST) | SSH signature in body (`signature` + `signer` fields) |
-| `/inbox` (GET) | SSH signature in headers (`X-Tribe-Signature` + `X-Tribe-Signer`) |
-| `/inbox/pending` (GET) | SSH signature in headers |
-
-The signature for inbox reads covers `GET <path>`. For sends, it covers the ciphertext JSON. All signatures use the `tribe-bridge` SSH namespace.
-
-### Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/send` | Deliver an encrypted, signed message |
-| `GET` | `/inbox?decrypt=true&since=<ts>&limit=<n>` | Read messages |
-| `GET` | `/inbox/pending` | Unread count |
-| `GET` | `/health` | Liveness check |
-
-## License
-
-MIT
+Do not improvise an in-place upgrade. Follow
+[`docs/v1-cutover.md`](docs/v1-cutover.md): provision beside v0, pass the review
+and drill gates, stop every v0 component, delete the disposable v0 inbox, then
+activate v1 at one reviewed commit. Rollback disables v1; it never re-enables
+v0.

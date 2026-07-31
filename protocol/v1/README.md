@@ -4,8 +4,8 @@ This directory is the review boundary for the v1 wire and security contract.
 
 - `THREAT-MODEL.md`: actors, assets, attacks, guarantees, and non-goals.
 - `SPEC.md`: normative envelope, crypto, directory, replay, and cutover rules.
-- `schema/*.schema.json`: closed envelope, directory, and acknowledgement
-  schemas.
+- `schema/*.schema.json`: closed envelope, directory, acknowledgement, and
+  signed HTTP authentication schemas.
 - `test-vectors/vectors.json`: positive and negative cases with real HPKE.
 - `generate_vectors.py`: generator using test-only key material. HPKE creates
   fresh ephemeral keys, so regenerated wraps differ while remaining conformant.

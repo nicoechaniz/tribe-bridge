@@ -1,0 +1,4 @@
+name: send-to-agent-v1
+version: 1.0.0
+description: Tribe v1 messaging tools; delegates all protocol and crypto work to the shared tribe-bridge implementation.
+provides_hooks: []

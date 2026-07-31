@@ -53,6 +53,10 @@ class CursorConflict(BrokerError):
     code = "cursor_conflict"
 
 
+class RequestReplay(BrokerError):
+    code = "request_replay"
+
+
 class StorageError(BrokerError):
     code = "storage_error"
 
@@ -370,6 +374,14 @@ class SQLiteBroker:
                         PRIMARY KEY(recipient_id, consumer_id)
                     ) STRICT;
 
+                    CREATE TABLE IF NOT EXISTS request_replays (
+                        agent_id TEXT NOT NULL,
+                        request_id TEXT NOT NULL,
+                        seen_at_ms INTEGER NOT NULL,
+                        expires_at_ms INTEGER NOT NULL,
+                        PRIMARY KEY(agent_id, request_id)
+                    ) STRICT;
+
                     CREATE TABLE IF NOT EXISTS outbox (
                         id INTEGER PRIMARY KEY,
                         sender_id TEXT NOT NULL,
@@ -407,6 +419,9 @@ class SQLiteBroker:
 
                     CREATE INDEX IF NOT EXISTS outbox_ready
                     ON outbox(state, available_at_ms, id);
+
+                    CREATE INDEX IF NOT EXISTS request_replay_expiry
+                    ON request_replays(expires_at_ms);
                     """
                 )
                 connection.execute(
@@ -444,6 +459,36 @@ class SQLiteBroker:
             "synchronous": "FULL",
             "path": str(self.path),
         }
+
+    def record_authenticated_request(
+        self,
+        agent_id: str,
+        request_id: str,
+        *,
+        now_ms: int,
+        expires_at_ms: int,
+    ) -> None:
+        if not protocol.IDENTIFIER.fullmatch(agent_id):
+            raise ValueError("invalid agent_id")
+        parsed = uuid.UUID(request_id)
+        if parsed.version != 7:
+            raise ValueError("request_id must be UUIDv7")
+        with self._transaction() as connection:
+            connection.execute(
+                "DELETE FROM request_replays WHERE expires_at_ms <= ?",
+                (now_ms,),
+            )
+            try:
+                connection.execute(
+                    """
+                    INSERT INTO request_replays(
+                        agent_id, request_id, seen_at_ms, expires_at_ms
+                    ) VALUES(?, ?, ?, ?)
+                    """,
+                    (agent_id, request_id, now_ms, expires_at_ms),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise RequestReplay("authenticated request was replayed") from exc
 
     def enqueue(
         self,
@@ -837,6 +882,7 @@ class SQLiteBroker:
         limit: int = 20,
         lease_ms: int = 60_000,
         now_ms: int | None = None,
+        outbox_id: int | None = None,
     ) -> list[dict[str, Any]]:
         if not 1 <= limit <= 100:
             raise ValueError("limit must be between 1 and 100")
@@ -869,9 +915,10 @@ class SQLiteBroker:
                 SELECT id, envelope_json, envelope_sha256, attempts
                 FROM outbox
                 WHERE state='pending' AND available_at_ms <= ?
+                  AND (? IS NULL OR id=?)
                 ORDER BY id LIMIT ?
                 """,
-                (now, limit),
+                (now, outbox_id, outbox_id, limit),
             ).fetchall()
             for row in rows:
                 lease_id = self.lease_id_factory()
@@ -906,6 +953,7 @@ class SQLiteBroker:
         *,
         receipt: dict[str, Any] | None = None,
         error: str | None = None,
+        terminal_error: bool = False,
         now_ms: int | None = None,
     ) -> str:
         if (receipt is None) == (error is None):
@@ -931,11 +979,13 @@ class SQLiteBroker:
                 available_at = now
                 receipt_json = protocol.canonical_json(receipt)
                 last_error = None
-            elif row["attempts"] >= self.max_attempts:
+            elif terminal_error or row["attempts"] >= self.max_attempts:
                 state = "dead_letter"
                 available_at = now
                 receipt_json = None
-                last_error = "max_attempts"
+                last_error = (
+                    str(error)[:256] if terminal_error else "max_attempts"
+                )
             else:
                 state = "pending"
                 available_at = now + min(

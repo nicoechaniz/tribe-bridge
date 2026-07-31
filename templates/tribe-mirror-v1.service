@@ -1,0 +1,27 @@
+[Unit]
+Description=Tribe Bridge v1 Telegram mirror poll
+After=network-online.target tribe-bridge-v1.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.tribe-bridge/v1/mirror.env
+WorkingDirectory=%h/Projects/tribe-bridge
+ExecStart=/usr/bin/env %h/.tribe-bridge/v1/venv/bin/python -I %h/Projects/tribe-bridge/scripts/mirror_v1.py
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.tribe-bridge/v1
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
