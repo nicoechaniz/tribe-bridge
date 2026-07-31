@@ -1,22 +1,17 @@
 [Unit]
-Description=Tribe Bridge LCM server for %i
+Description=Tribe Bridge v0 Telegram mirror
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 UMask=0077
-Environment=TRIBE_AGENT_NAME=%i
-Environment=TRIBE_BRIDGE_PORT=8585
-Environment=TRIBE_BRIDGE_BIND=127.0.0.1
-EnvironmentFile=%h/.tribe-bridge/%i.env
-ExecStart=/usr/bin/python3 %h/Projects/tribe-bridge/src/lcm-server.py
+EnvironmentFile=%h/.tribe-bridge/mirror.env
+ExecStart=/usr/bin/python3 %h/Projects/tribe-bridge/src/mirror-bot.py
 Restart=always
 RestartSec=5
 TimeoutStopSec=15
 
-# The bridge needs read access to its checkout and SSH roster, and write access
-# only to its own state directory.
 NoNewPrivileges=true
 PrivateTmp=true
 PrivateDevices=true

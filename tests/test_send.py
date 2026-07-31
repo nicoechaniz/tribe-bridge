@@ -51,6 +51,9 @@ class SendTests(unittest.TestCase):
         self.assertEqual(timeout, 4.0)
         self.assertEqual(envelope["payload"]["via"], "direct")
         self.assertEqual(envelope["payload"]["message_id"], "message-1")
+        self.assertEqual(
+            envelope["payload"]["classification"], "tribe-public"
+        )
 
     def test_direct_failure_falls_back_with_same_logical_id(self):
         with (

@@ -139,6 +139,9 @@ def deliver_message(
         "text": text,
         "ts": int(time.time()),
         "message_id": message_id,
+        # v0 has no confidentiality: every message is in the tribe-public
+        # trust domain, including messages copied to Telegram.
+        "classification": "tribe-public",
     }
 
     if direct:
