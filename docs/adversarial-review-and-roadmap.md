@@ -62,7 +62,7 @@ not hold encryption keys.
 | tribe-bridge #16 | clients, mirror, Hermes integration | #15 branch |
 | tribe-bridge #19 | deterministic HTTP fixture | #16 branch |
 | tribe-bridge #17 | GitHub claims/leases/gates | #19 branch |
-| issue #12 branch | Daimon inventory/manifests/selectors | #17 branch |
+| tribe-bridge #20 | Daimon inventory/manifests/selectors | #17 branch |
 
 PR #13 is a parallel containment prerequisite. The v1 chain starts at #14.
 
