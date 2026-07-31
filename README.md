@@ -83,3 +83,40 @@ Do not improvise an in-place upgrade. Follow
 and drill gates, stop every v0 component, delete the disposable v0 inbox, then
 activate v1 at one reviewed commit. Rollback disables v1; it never re-enables
 v0.
+
+## Endpoint policy: anyVPN first
+
+Client routes (`TRIBE_V1_ROUTES`, `TRIBE_V1_INBOX_ENDPOINTS`) are deployment
+configuration, not protocol. The rule for choosing endpoints:
+
+- Always prefer anyVPN (ZeroTier) addresses. The VPN mesh is the tribe's
+  backbone: direct delivery between peers stays inside the encrypted overlay
+  and does not depend on public reachability.
+- Public IPs or DNS names are fallback only, for peers not yet on the mesh.
+- The hub itself is on the mesh at `10.10.20.69`; reference it by VPN address
+  in every route map unless the peer has no VPN path.
+
+```bash
+export TRIBE_V1_ROUTES='{"oliva":{"direct":"http://10.10.20.12:8685","hub":"http://10.10.20.69:8685"}}'
+```
+
+## Adding an agent
+
+Identity lives in the governance-signed directory; there is no roster file to
+edit. To onboard `<agent>@<host>`:
+
+1. On the new agent's host, generate its purpose-separated bundle
+   (`scripts/generate_v1_keys.py agent --agent-id <agent>@<host> --epoch <N>`).
+   Private keys never leave that host; the command prints only the public
+   directory fragment.
+2. Governance builds the next directory epoch with the new agent, its direct
+   audience, and updated group membership. The epoch increments and
+   `previous_sha256` chains to the current directory.
+3. Sign with the offline governance root (`scripts/sign_directory_v1.py`) and
+   distribute the signed `directory.json` to every host. The anti-rollback
+   state rejects anything that does not extend the chain.
+4. Add the agent's endpoints to each peer's `TRIBE_V1_ROUTES` following the
+   anyVPN-first policy above.
+
+v0 material (SSH keys, `allowed_signers`, roster files) is never imported into
+v1: new agent, new keys, new epoch.
