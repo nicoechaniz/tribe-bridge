@@ -1,0 +1,16 @@
+{
+  "schema": "daimon-task-requirements/v1",
+  "task_id": "review.github-claims",
+  "required_capabilities": [
+    "tool.github-coordination"
+  ],
+  "required_tools": [
+    "tool.github-coordination"
+  ],
+  "required_classification": "internal",
+  "required_trust_domains": [
+    "tribe-federation"
+  ],
+  "required_realm": "local-cli",
+  "allow_partial": true
+}

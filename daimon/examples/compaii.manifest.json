@@ -1,0 +1,355 @@
+{
+  "schema": "daimon-manifest/v1",
+  "manifest_id": "compaii.local.review-candidate",
+  "subject": "compaii@localhost",
+  "definition": {
+    "source_uri": "https://hackmd.io/@nicoechaniz/daimon-matrix",
+    "source_sha256": "7f7cd51440c09893d1bac3261d39ddca5558f9d0457f665b77a042d1a7aae16b",
+    "species_sha256": "7f7cd51440c09893d1bac3261d39ddca5558f9d0457f665b77a042d1a7aae16b"
+  },
+  "lineage": [],
+  "provenance": {
+    "generated_at": "2026-07-31T06:30:00Z",
+    "generator": "tribe-bridge.daimon-manifest",
+    "source_repository": "https://github.com/nicoechaniz/tribe-bridge",
+    "source_commit": "7e1cd907abde69f111f45121ad2eaafbfad3e61d"
+  },
+  "portability": {
+    "generation_scheme": "compaii-state-manifest/v2",
+    "generation_id": "2bff8428-cfdc-48f7-a0da-8edfa85e32b6",
+    "source_commit": "87cbc7b32e65aa0e7c875db363f95ef9f3da62f9",
+    "artifact_index_sha256": "dacf4c1e7b2d783ce4c8991add7fe3ea20b8c8bfa9bd70b6dec2db5221409490",
+    "restore_contract": {
+      "uri": "git+https://github.com/nicoechaniz/compaii-state@533e547#docs/safe-sync-and-restore.md",
+      "sha256": "bd8be52da02953d2759613432fdb00180d54760e26e7dba2e79b5a04492f6937"
+    }
+  },
+  "trust_domains": [
+    {
+      "id": "local-private",
+      "classifications": [
+        "private",
+        "internal"
+      ],
+      "endpoint_schemes": [
+        "hmk",
+        "file-source",
+        "projection",
+        "human",
+        "local"
+      ],
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/hermes-memory-kit@892998c#docs/memory-ownership-contract.md",
+          "sha256": "1e25760c59fe8f85a641bdb3bb842fcf63bc86e7b744112e345930783de0f0a9"
+        }
+      ]
+    },
+    {
+      "id": "tribe-federation",
+      "classifications": [
+        "internal",
+        "tribe-shared",
+        "public"
+      ],
+      "endpoint_schemes": [
+        "tribe",
+        "github"
+      ],
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#protocol/v1/SPEC.md",
+          "sha256": "a190d02a76b455c155faab74d4a4e40f7fba29d5df85ec58ce9867bc4f8e0681"
+        },
+        {
+          "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#docs/multi-agent-github-coordination.md",
+          "sha256": "80a9a6fe3f9ffa5645586144fdc0ba484292b4bbcf4b4f086a3eeca7350d794a"
+        }
+      ]
+    },
+    {
+      "id": "shared-publication",
+      "classifications": [
+        "public",
+        "tribe-shared"
+      ],
+      "endpoint_schemes": [
+        "collective"
+      ],
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/hermes-memory-kit@350c61a#docs/collective-memory-publication.md",
+          "sha256": "60ce215f0ff2a10667cd0da033ba15a582bb09fad823cc984a9cd6f9d655428b"
+        }
+      ]
+    }
+  ],
+  "embodiment": {
+    "realm": "local-cli",
+    "body_id": "codex-session",
+    "surfaces": [
+      "terminal",
+      "github",
+      "tribe"
+    ],
+    "sensors": [],
+    "actuators": [],
+    "tools": [
+      "tool.librarian",
+      "tool.tribe-send",
+      "tool.github-coordination"
+    ]
+  },
+  "memory_endpoints": [
+    {
+      "id": "memory.hmk",
+      "role": "operational-private",
+      "authority": "source",
+      "uri": "hmk://compaii@localhost/library",
+      "modes": [
+        "read",
+        "write"
+      ],
+      "classifications": [
+        "private",
+        "internal"
+      ],
+      "trust_domain": "local-private",
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/hermes-memory-kit@892998c#docs/memory-ownership-contract.md",
+          "sha256": "1e25760c59fe8f85a641bdb3bb842fcf63bc86e7b744112e345930783de0f0a9"
+        }
+      ]
+    },
+    {
+      "id": "memory.llm-wiki",
+      "role": "knowledge-source",
+      "authority": "source",
+      "uri": "file-source://llm-wiki/canonical",
+      "modes": [
+        "read",
+        "write"
+      ],
+      "classifications": [
+        "internal"
+      ],
+      "trust_domain": "local-private",
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/hermes-memory-kit@892998c#docs/memory-ownership-contract.md",
+          "sha256": "1e25760c59fe8f85a641bdb3bb842fcf63bc86e7b744112e345930783de0f0a9"
+        }
+      ]
+    },
+    {
+      "id": "memory.collective",
+      "role": "downstream-publication",
+      "authority": "downstream",
+      "uri": "collective://altermundi/reviewed-artifacts",
+      "modes": [
+        "read",
+        "publish"
+      ],
+      "classifications": [
+        "public",
+        "tribe-shared"
+      ],
+      "trust_domain": "shared-publication",
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/hermes-memory-kit@350c61a#docs/collective-memory-publication.md",
+          "sha256": "60ce215f0ff2a10667cd0da033ba15a582bb09fad823cc984a9cd6f9d655428b"
+        }
+      ]
+    }
+  ],
+  "communication_endpoints": [
+    {
+      "id": "communication.tribe",
+      "scope": "tribe",
+      "uri": "tribe://compaii@localhost",
+      "modes": [
+        "send",
+        "receive"
+      ],
+      "classifications": [
+        "internal",
+        "tribe-shared",
+        "public"
+      ],
+      "trust_domain": "tribe-federation",
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#protocol/v1/SPEC.md",
+          "sha256": "a190d02a76b455c155faab74d4a4e40f7fba29d5df85ec58ce9867bc4f8e0681"
+        }
+      ]
+    },
+    {
+      "id": "communication.github",
+      "scope": "tribe",
+      "uri": "github://AlterMundi/project/8",
+      "modes": [
+        "coordinate"
+      ],
+      "classifications": [
+        "internal",
+        "tribe-shared",
+        "public"
+      ],
+      "trust_domain": "tribe-federation",
+      "policy_refs": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#docs/multi-agent-github-coordination.md",
+          "sha256": "80a9a6fe3f9ffa5645586144fdc0ba484292b4bbcf4b4f086a3eeca7350d794a"
+        }
+      ]
+    },
+    {
+      "id": "communication.human",
+      "scope": "human",
+      "uri": "human://nico",
+      "modes": [
+        "send",
+        "receive"
+      ],
+      "classifications": [
+        "private",
+        "internal"
+      ],
+      "trust_domain": "local-private",
+      "policy_refs": []
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "tool.librarian",
+      "kind": "tool",
+      "maturity": "implemented",
+      "version": "1.1.0",
+      "interfaces": [
+        "hermes-tool:librarian"
+      ],
+      "task_labels": [
+        "memory-read",
+        "memory-write"
+      ],
+      "trust_domains": [
+        "local-private"
+      ],
+      "evidence": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/hermes-memory-kit@892998c#templates/plugins/hmk-memory/__init__.py",
+          "sha256": "9ae6e93f4aba5cdfd938d68e911db75296a5de0733e3b218d77118fbcee27641"
+        }
+      ],
+      "constraints": [
+        "HMK-native and Wiki-index ownership rules remain distinct"
+      ]
+    },
+    {
+      "id": "tool.tribe-send",
+      "kind": "tool",
+      "maturity": "partial",
+      "version": "1.0.0-rc",
+      "interfaces": [
+        "hermes-tool:send_to_agent_v1"
+      ],
+      "task_labels": [
+        "agent-message"
+      ],
+      "trust_domains": [
+        "tribe-federation"
+      ],
+      "evidence": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#src/tribe_client_v1.py",
+          "sha256": "a1993b17a41df62353e20ee5df88764657e0151ed19561af0bea404fcc7d4058"
+        }
+      ],
+      "constraints": [
+        "v1 is implemented in draft but not deployed"
+      ]
+    },
+    {
+      "id": "tool.github-coordination",
+      "kind": "tool",
+      "maturity": "partial",
+      "version": "1.0.0-rc",
+      "interfaces": [
+        "github-issue-claim:v1"
+      ],
+      "task_labels": [
+        "claim",
+        "review",
+        "kanban"
+      ],
+      "trust_domains": [
+        "tribe-federation"
+      ],
+      "evidence": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#src/github_coordination.py",
+          "sha256": "e93dc9083b1a787530eb7a9f6061fea945cda1e4274506ecb378d0cf5483e388"
+        }
+      ],
+      "constraints": [
+        "Codex and CompAII still share one GitHub account",
+        "claims need separate app identities and detached signatures"
+      ]
+    },
+    {
+      "id": "publication.collective-reviewed",
+      "kind": "publication",
+      "maturity": "partial",
+      "version": "1.0.0-rc",
+      "interfaces": [
+        "filesystem-markdown",
+        "hmk-collective-publication-plan/v1"
+      ],
+      "task_labels": [
+        "knowledge-publication",
+        "revocation"
+      ],
+      "trust_domains": [
+        "local-private",
+        "shared-publication"
+      ],
+      "evidence": [
+        {
+          "uri": "git+https://github.com/nicoechaniz/hermes-memory-kit@350c61a#scripts/publish_collective.py",
+          "sha256": "c0cc984e47d0378b3835090567005c3a24ad0dd2f0710048a264556096d7b289"
+        }
+      ],
+      "constraints": [
+        "awaiting Mariano review and isolated publish/revoke drill"
+      ]
+    }
+  ],
+  "secret_refs": [
+    {
+      "name": "tribe-signing",
+      "reference": "secret-store://tribe/compaii/signing"
+    }
+  ],
+  "governance": {
+    "owner": "AlterMundi / Nicolás Echániz",
+    "decision_refs": [
+      {
+        "uri": "github://nicoechaniz/tribe-bridge/issues/12",
+        "sha256": "1171121210a14fab300e027e55224497fc9c280173686c28a54beaa2b25ffccf"
+      }
+    ],
+    "authorization_policy_refs": [
+      {
+        "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#protocol/v1/SPEC.md",
+        "sha256": "a190d02a76b455c155faab74d4a4e40f7fba29d5df85ec58ce9867bc4f8e0681"
+      },
+      {
+        "uri": "git+https://github.com/nicoechaniz/tribe-bridge@7e1cd907#coordination/claim.schema.json",
+        "sha256": "5c024b882b65368508e242979a5656da4e956470ac3387ab8cd0e85e9ab52cdb"
+      }
+    ]
+  }
+}

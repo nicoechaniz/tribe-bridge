@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nicoechaniz/tribe-bridge/daimon/concept-inventory.schema.json",
+  "title": "Daimon Matrix concept inventory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source",
+    "governance_owner",
+    "concepts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "daimon-concept-inventory/v1"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "observed_at",
+        "source_last_edited",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "source_last_edited": {
+          "type": "string",
+          "format": "date"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "governance_owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "concepts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source_expression",
+          "classification",
+          "executable_mapping",
+          "status_date",
+          "notes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._@/-]{1,127}$"
+          },
+          "source_expression": {
+            "type": "string",
+            "minLength": 1
+          },
+          "classification": {
+            "enum": [
+              "implemented",
+              "partial",
+              "metaphor",
+              "aspirational"
+            ]
+          },
+          "executable_mapping": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

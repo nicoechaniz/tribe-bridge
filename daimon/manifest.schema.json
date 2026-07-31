@@ -1,0 +1,473 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nicoechaniz/tribe-bridge/daimon/manifest.schema.json",
+  "title": "Daimon instance manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "manifest_id",
+    "subject",
+    "definition",
+    "lineage",
+    "provenance",
+    "portability",
+    "trust_domains",
+    "embodiment",
+    "memory_endpoints",
+    "communication_endpoints",
+    "capabilities",
+    "secret_refs",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "daimon-manifest/v1"
+    },
+    "manifest_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "subject": {
+      "$ref": "#/$defs/identifier"
+    },
+    "definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_uri",
+        "source_sha256",
+        "species_sha256"
+      ],
+      "properties": {
+        "source_uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "source_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "species_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "lineage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "species_id",
+          "definition_sha256"
+        ],
+        "properties": {
+          "species_id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "definition_sha256": {
+            "$ref": "#/$defs/sha256"
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generated_at",
+        "generator",
+        "source_repository",
+        "source_commit"
+      ],
+      "properties": {
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "generator": {
+          "$ref": "#/$defs/identifier"
+        },
+        "source_repository": {
+          "$ref": "#/$defs/uri"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/git_sha"
+        }
+      }
+    },
+    "portability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generation_scheme",
+        "generation_id",
+        "source_commit",
+        "artifact_index_sha256",
+        "restore_contract"
+      ],
+      "properties": {
+        "generation_scheme": {
+          "const": "compaii-state-manifest/v2"
+        },
+        "generation_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/git_sha"
+        },
+        "artifact_index_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "restore_contract": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    },
+    "trust_domains": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "classifications",
+          "endpoint_schemes",
+          "policy_refs"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "classifications": {
+            "$ref": "#/$defs/classifications"
+          },
+          "endpoint_schemes": {
+            "type": "array",
+            "uniqueItems": true,
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "hmk",
+                "file-source",
+                "collective",
+                "projection",
+                "tribe",
+                "github",
+                "human",
+                "local"
+              ]
+            }
+          },
+          "policy_refs": {
+            "$ref": "#/$defs/evidence_list"
+          }
+        }
+      }
+    },
+    "embodiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "realm",
+        "body_id",
+        "surfaces",
+        "sensors",
+        "actuators",
+        "tools"
+      ],
+      "properties": {
+        "realm": {
+          "$ref": "#/$defs/identifier"
+        },
+        "body_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "surfaces": {
+          "$ref": "#/$defs/string_list"
+        },
+        "sensors": {
+          "$ref": "#/$defs/string_list"
+        },
+        "actuators": {
+          "$ref": "#/$defs/string_list"
+        },
+        "tools": {
+          "$ref": "#/$defs/string_list"
+        }
+      }
+    },
+    "memory_endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "role",
+          "authority",
+          "uri",
+          "modes",
+          "classifications",
+          "trust_domain",
+          "policy_refs"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "role": {
+            "enum": [
+              "operational-private",
+              "knowledge-source",
+              "downstream-publication",
+              "navigation-projection"
+            ]
+          },
+          "authority": {
+            "enum": [
+              "source",
+              "retrieval-index",
+              "downstream",
+              "projection"
+            ]
+          },
+          "uri": {
+            "$ref": "#/$defs/uri"
+          },
+          "modes": {
+            "type": "array",
+            "uniqueItems": true,
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "read",
+                "write",
+                "publish"
+              ]
+            }
+          },
+          "classifications": {
+            "$ref": "#/$defs/classifications"
+          },
+          "trust_domain": {
+            "$ref": "#/$defs/identifier"
+          },
+          "policy_refs": {
+            "$ref": "#/$defs/evidence_list"
+          }
+        }
+      }
+    },
+    "communication_endpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "scope",
+          "uri",
+          "modes",
+          "classifications",
+          "trust_domain",
+          "policy_refs"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "scope": {
+            "enum": [
+              "direct",
+              "human",
+              "tribe",
+              "everyone",
+              "here",
+              "near",
+              "all"
+            ]
+          },
+          "uri": {
+            "$ref": "#/$defs/uri"
+          },
+          "modes": {
+            "type": "array",
+            "uniqueItems": true,
+            "minItems": 1,
+            "items": {
+              "enum": [
+                "send",
+                "receive",
+                "coordinate"
+              ]
+            }
+          },
+          "classifications": {
+            "$ref": "#/$defs/classifications"
+          },
+          "trust_domain": {
+            "$ref": "#/$defs/identifier"
+          },
+          "policy_refs": {
+            "$ref": "#/$defs/evidence_list"
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "maturity",
+          "version",
+          "interfaces",
+          "task_labels",
+          "trust_domains",
+          "evidence",
+          "constraints"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/identifier"
+          },
+          "kind": {
+            "$ref": "#/$defs/identifier"
+          },
+          "maturity": {
+            "enum": [
+              "implemented",
+              "partial",
+              "aspirational"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "interfaces": {
+            "$ref": "#/$defs/string_list"
+          },
+          "task_labels": {
+            "$ref": "#/$defs/string_list"
+          },
+          "trust_domains": {
+            "$ref": "#/$defs/string_list"
+          },
+          "evidence": {
+            "$ref": "#/$defs/evidence_list"
+          },
+          "constraints": {
+            "$ref": "#/$defs/string_list"
+          }
+        }
+      }
+    },
+    "secret_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "reference"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/identifier"
+          },
+          "reference": {
+            "type": "string",
+            "pattern": "^(env|secret-store)://"
+          }
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "decision_refs",
+        "authorization_policy_refs"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision_refs": {
+          "$ref": "#/$defs/evidence_list"
+        },
+        "authorization_policy_refs": {
+          "$ref": "#/$defs/evidence_list"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._@/-]{1,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "git_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "uri": {
+      "type": "string",
+      "format": "uri",
+      "minLength": 3
+    },
+    "string_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "classifications": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "enum": [
+          "public",
+          "tribe-shared",
+          "internal",
+          "private"
+        ]
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "$ref": "#/$defs/uri"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "evidence_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    }
+  }
+}
