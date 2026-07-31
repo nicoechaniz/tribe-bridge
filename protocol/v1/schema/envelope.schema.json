@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tribe.invalid/protocol/v1/envelope.schema.json",
+  "title": "Tribe Protocol v1 Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "version",
+    "message_id",
+    "issued_at_ms",
+    "expires_at_ms",
+    "sender",
+    "audience",
+    "content_type",
+    "suite",
+    "payload",
+    "recipients",
+    "signature"
+  ],
+  "properties": {
+    "protocol": {"const": "tribe"},
+    "version": {"const": 1},
+    "message_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "RFC 9562 UUIDv7"
+    },
+    "issued_at_ms": {"type": "integer", "minimum": 0},
+    "expires_at_ms": {"type": "integer", "minimum": 1},
+    "sender": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "signing_kid"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "signing_kid": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "epoch"],
+      "properties": {
+        "type": {"enum": ["direct", "group"]},
+        "id": {"$ref": "#/$defs/identifier"},
+        "epoch": {"type": "integer", "minimum": 1}
+      }
+    },
+    "content_type": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$"
+    },
+    "suite": {
+      "const": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nonce", "ciphertext"],
+      "properties": {
+        "nonce": {"$ref": "#/$defs/base64url"},
+        "ciphertext": {"$ref": "#/$defs/base64url"}
+      }
+    },
+    "recipients": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "encryption_kid", "enc", "wrapped_cek"],
+        "properties": {
+          "id": {"$ref": "#/$defs/identifier"},
+          "encryption_kid": {"$ref": "#/$defs/identifier"},
+          "enc": {"$ref": "#/$defs/base64url"},
+          "wrapped_cek": {"$ref": "#/$defs/base64url"}
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "kid", "value"],
+      "properties": {
+        "alg": {"const": "Ed25519"},
+        "kid": {"$ref": "#/$defs/identifier"},
+        "value": {"$ref": "#/$defs/base64url"}
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9._@/-]{0,126}[a-z0-9])?$"
+    },
+    "base64url": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  }
+}
