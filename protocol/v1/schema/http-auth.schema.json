@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tribe.invalid/protocol/v1/http-auth.schema.json",
+  "title": "Tribe v1 signed HTTP request authentication",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "agent_id",
+    "signing_kid",
+    "request_id",
+    "issued_at_ms",
+    "expires_at_ms",
+    "method",
+    "path",
+    "body_sha256",
+    "signature"
+  ],
+  "properties": {
+    "schema": {"const": "tribe-http-auth/v1"},
+    "agent_id": {"$ref": "#/$defs/identifier"},
+    "signing_kid": {"$ref": "#/$defs/identifier"},
+    "request_id": {"type": "string", "format": "uuid"},
+    "issued_at_ms": {"type": "integer", "minimum": 0},
+    "expires_at_ms": {"type": "integer", "minimum": 1},
+    "method": {"const": "POST"},
+    "path": {
+      "enum": ["/v1/messages", "/v1/claims", "/v1/acks"]
+    },
+    "body_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "kid", "value"],
+      "properties": {
+        "alg": {"const": "Ed25519"},
+        "kid": {"$ref": "#/$defs/identifier"},
+        "value": {"$ref": "#/$defs/base64url"}
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9._@/-]{0,126}[a-z0-9])?$"
+    },
+    "base64url": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  }
+}

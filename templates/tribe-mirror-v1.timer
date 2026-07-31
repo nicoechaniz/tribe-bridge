@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll explicit Tribe v1 mirror inbox
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+RandomizedDelaySec=3s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

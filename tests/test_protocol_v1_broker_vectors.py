@@ -51,6 +51,10 @@ class BrokerVectorTests(unittest.TestCase):
             "tribe-ack/v1",
         )
         self.assertEqual(
+            schemas["http-auth.schema.json"]["properties"]["schema"]["const"],
+            "tribe-http-auth/v1",
+        )
+        self.assertEqual(
             self.vectors["format"], "tribe-v1-conformance-vectors/1"
         )
 
