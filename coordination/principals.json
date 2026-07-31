@@ -1,0 +1,13 @@
+{
+  "schema": "tribe-principals/v1",
+  "principals": {
+    "codex@localhost": {
+      "enabled": true,
+      "github_logins": ["nicoechaniz"]
+    },
+    "compaii@localhost": {
+      "enabled": true,
+      "github_logins": ["nicoechaniz"]
+    }
+  }
+}

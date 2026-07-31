@@ -25,6 +25,11 @@ The normative contract is in
 [`protocol/v1`](protocol/v1/README.md), with the threat model and executable
 positive/negative vectors.
 
+Multi-agent work is coordinated through append-only, leased GitHub claims and
+protected pull requests. See
+[`docs/multi-agent-github-coordination.md`](docs/multi-agent-github-coordination.md);
+local Tribe inboxes are notification paths, not ownership authority.
+
 ## Components
 
 | Component | Purpose |

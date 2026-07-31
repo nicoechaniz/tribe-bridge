@@ -1,0 +1,26 @@
+name: coordination
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  coordination:
+    name: coordination
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit issue claim and pull request contract
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: >-
+          python scripts/check_github_coordination.py
+          --repo "$GITHUB_REPOSITORY"
+          pr --pr "$PR_NUMBER"

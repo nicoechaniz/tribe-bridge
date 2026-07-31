@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nicoechaniz/tribe-bridge/coordination/claim.schema.json",
+  "title": "Tribe GitHub coordination event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "event",
+    "event_id",
+    "claim_id",
+    "issue",
+    "principal",
+    "state",
+    "at",
+    "lease_until",
+    "resources"
+  ],
+  "properties": {
+    "schema": {
+      "const": "tribe-claim/v1"
+    },
+    "event": {
+      "enum": ["claim", "renew", "status", "release"]
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "claim_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "number"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "principal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_.:@/-]+$"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "in_progress",
+        "in_review",
+        "blocked",
+        "done",
+        "released"
+      ]
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lease_until": {
+      "oneOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256,
+        "pattern": "^(issue|path|service|project|protocol):[^\\s]+$"
+      }
+    },
+    "branch": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "pull_request": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "supersedes": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "note": {
+      "type": ["string", "null"],
+      "maxLength": 500
+    }
+  }
+}
