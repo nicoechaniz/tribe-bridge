@@ -29,6 +29,27 @@ Agent B ──POST──▶ Agent A @ 10.10.20.y:8585
 
 Agents behind NAT (compaii) use the hub. Agents on the VPN (oliva) can run locally. The mirror acts as relay: when a message addressed to oliva arrives at the hub, it is forwarded to her local LCM.
 
+The client scripts combine both paths automatically:
+
+1. `send.py` tries the recipient's direct anyVPN endpoint first and falls
+   back to that recipient's hub inbox after a short timeout.
+2. `check_inbox.py` drains both the local and hub inboxes, deduplicates by
+   logical `message_id`, and re-posts directly delivered envelopes to the hub
+   for Telegram visibility and history.
+
+Configure the direct and hub endpoint maps separately so the existing flat
+`TRIBE_ROSTER` format remains compatible with the mirror:
+
+```bash
+export TRIBE_ROSTER='{"oliva":"10.8.0.5:8585","compaii":"10.8.0.4:8585"}'
+export TRIBE_HUB_ROSTER='{"oliva":"144.217.95.152:8587","compaii":"144.217.95.152:8586"}'
+```
+
+Route-aware entries such as
+`{"oliva":{"direct":"10.8.0.5:8585","hub":"144.217.95.152:8587"}}`
+are also accepted by the client scripts, but the separate maps are recommended
+while `mirror-bot.py` consumes the flat roster.
+
 ## Security (gopass model)
 
 - **Group encryption**: AES-256-GCM with a symmetric key derived from the `allowed_signers` roster (HMAC-SHA256 over sorted, deduplicated pubkeys). Any tribe member with the same set of pubkeys can decrypt all messages — regardless of file ordering.
@@ -67,10 +88,32 @@ curl -H "X-Tribe-Signature: $SIG" -H "X-Tribe-Signer: $TRIBE_AGENT_NAME" \
   http://<hub>:<port>/inbox?decrypt=true
 ```
 
+The client drains and merges the local inbox with the current agent's hub
+inbox when `TRIBE_HUB_ROSTER` is configured:
+
+```bash
+python3 ~/Projects/tribe-bridge/scripts/check_inbox.py
+```
+
+Drain state is stored in `~/.tribe-bridge/check-inbox-state.json`. Use
+`--no-state` to inspect the current server responses without marking messages
+as drained.
+
 ### 4. Send a message
 
 ```bash
 python3 ~/Projects/tribe-bridge/scripts/send.py --to oliva --text "hola"
+```
+
+Use `--direct` and `--hub` to override roster endpoints for one send. Direct
+delivery defaults to a four-second timeout before the hub fallback.
+
+## Tests
+
+The client test suite uses the Python standard library:
+
+```bash
+python3 -m unittest discover -s tests -v
 ```
 
 ## Telegram Integration
