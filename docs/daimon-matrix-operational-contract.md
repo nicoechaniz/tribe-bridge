@@ -94,12 +94,15 @@ artifact-index hash:
 python3 scripts/bind_daimon_generation.py \
   --template daimon/examples/compaii.manifest.json \
   --state-repo /path/to/compaii-state \
-  --state-commit <reviewed-full-git-sha>
+  --state-commit <reviewed-full-git-sha> \
+  --reviewed-ref refs/remotes/origin/<reviewed-branch>
 ```
 
 The binder reads `manifest.json` directly from that immutable Git commit rather
-than trusting the working tree. This is a dry run unless `--output` is
-supplied. The bound descriptor is kept
+than trusting the working tree. It also requires the commit to be reachable
+from the named remote-tracking review ref; callers must fetch that ref before
+binding. A merely local commit is not accepted as reviewed. This is a dry run
+unless `--output` is supplied. The bound descriptor is kept
 outside the state generation it names. Embedding it in the same artifact index
 would create an impossible recursive hash. A rebirth restores the reviewed
 template/generation and then regenerates this external descriptor; it does not

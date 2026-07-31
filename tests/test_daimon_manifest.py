@@ -1,6 +1,8 @@
 import copy
 import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -86,6 +88,25 @@ class DaimonManifestTests(unittest.TestCase):
         self.assertFalse(decision["eligible_for_consideration"])
         self.assertTrue(
             any("not allowed in trust domain" in item for item in decision["reasons"])
+        )
+
+    def test_capability_must_cover_every_required_trust_domain(self):
+        task = copy.deepcopy(self.task)
+        task["required_trust_domains"] = [
+            "tribe-federation",
+            "local-private",
+        ]
+
+        decision = select_manifest(self.manifest, task)
+
+        self.assertFalse(decision["eligible_for_consideration"])
+        self.assertNotIn(
+            "tool.github-coordination", decision["matched_capabilities"]
+        )
+        self.assertIn(
+            "capability tool.github-coordination does not cover required "
+            "trust domains: local-private",
+            decision["reasons"],
         )
 
     def test_unknown_fields_are_rejected(self):
@@ -202,7 +223,87 @@ class DaimonManifestTests(unittest.TestCase):
 
     def test_reviewed_state_loader_rejects_non_full_commit(self):
         with self.assertRaisesRegex(BindingError, "full lowercase"):
-            reviewed_state_manifest(ROOT, "main")
+            reviewed_state_manifest(ROOT, "main", "refs/remotes/origin/main")
+
+    def test_reviewed_state_loader_requires_remote_reviewed_ancestry(self):
+        state = {
+            "schema_version": "compaii-state-manifest/v2",
+            "generation": {"id": "12345678-1234-4234-9234-123456789abc"},
+            "artifact_index": {"sha256": "b" * 64},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run(
+                ["git", "init", "--initial-branch=main"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Test"],
+                cwd=repo,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "test@example.invalid"],
+                cwd=repo,
+                check=True,
+            )
+            (repo / "manifest.json").write_text(
+                json.dumps(state), encoding="utf-8"
+            )
+            subprocess.run(["git", "add", "manifest.json"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "reviewed"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+            )
+            reviewed = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            subprocess.run(
+                [
+                    "git",
+                    "update-ref",
+                    "refs/remotes/origin/reviewed",
+                    reviewed,
+                ],
+                cwd=repo,
+                check=True,
+            )
+
+            loaded = reviewed_state_manifest(
+                repo, reviewed, "refs/remotes/origin/reviewed"
+            )
+            self.assertEqual(loaded, state)
+
+            (repo / "manifest.json").write_text(
+                json.dumps({**state, "unreviewed": True}), encoding="utf-8"
+            )
+            subprocess.run(["git", "add", "manifest.json"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "unreviewed"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+            )
+            unreviewed = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+            with self.assertRaisesRegex(BindingError, "not reachable"):
+                reviewed_state_manifest(
+                    repo, unreviewed, "refs/remotes/origin/reviewed"
+                )
 
 
 if __name__ == "__main__":

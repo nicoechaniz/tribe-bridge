@@ -555,6 +555,16 @@ def select_manifest(manifest_value: Any, task_value: Any) -> dict[str, Any]:
         if capability["maturity"] == "partial" and not task["allow_partial"]:
             reasons.append(f"capability is only partial: {capability_id}")
             continue
+        missing_domains = sorted(
+            set(task["required_trust_domains"])
+            - set(capability["trust_domains"])
+        )
+        if missing_domains:
+            reasons.append(
+                f"capability {capability_id} does not cover required trust "
+                f"domains: {', '.join(missing_domains)}"
+            )
+            continue
         matched.append(capability_id)
         warnings.extend(
             f"{capability_id}: {constraint}"

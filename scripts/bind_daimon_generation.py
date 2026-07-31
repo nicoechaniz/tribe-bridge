@@ -30,10 +30,33 @@ class BindingError(RuntimeError):
     pass
 
 
-def reviewed_state_manifest(repository: Path, commit: str) -> dict:
+def reviewed_state_manifest(
+    repository: Path, commit: str, reviewed_ref: str
+) -> dict:
     repo = repository.expanduser().resolve()
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise BindingError("state commit must be a full lowercase Git SHA")
+    if not reviewed_ref.startswith("refs/remotes/"):
+        raise BindingError(
+            "reviewed ref must be a full remote-tracking ref "
+            "(refs/remotes/<remote>/<branch>)"
+        )
+    checked_ref = subprocess.run(
+        ["git", "check-ref-format", reviewed_ref],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+    )
+    if checked_ref.returncode:
+        raise BindingError("reviewed ref is not a valid Git ref")
+    resolved_ref = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{reviewed_ref}^{{commit}}"],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+    )
+    if resolved_ref.returncode:
+        raise BindingError("reviewed remote-tracking ref does not exist")
     verified = subprocess.run(
         ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
         cwd=repo,
@@ -42,6 +65,16 @@ def reviewed_state_manifest(repository: Path, commit: str) -> dict:
     )
     if verified.returncode:
         raise BindingError("state commit does not exist in the reviewed repository")
+    contained = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit, reviewed_ref],
+        cwd=repo,
+        check=False,
+        capture_output=True,
+    )
+    if contained.returncode:
+        raise BindingError(
+            "state commit is not reachable from the reviewed remote-tracking ref"
+        )
     result = subprocess.run(
         ["git", "show", f"{commit}:manifest.json"],
         cwd=repo,
@@ -105,11 +138,18 @@ def main() -> int:
     parser.add_argument("--template", type=Path, required=True)
     parser.add_argument("--state-repo", type=Path, required=True)
     parser.add_argument("--state-commit", required=True)
+    parser.add_argument(
+        "--reviewed-ref",
+        required=True,
+        help="full remote-tracking ref containing the reviewed commit",
+    )
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     try:
         template = json.loads(args.template.read_text(encoding="utf-8"))
-        state = reviewed_state_manifest(args.state_repo, args.state_commit)
+        state = reviewed_state_manifest(
+            args.state_repo, args.state_commit, args.reviewed_ref
+        )
         bound = bind_generation(template, state, args.state_commit)
     except (OSError, json.JSONDecodeError, BindingError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
