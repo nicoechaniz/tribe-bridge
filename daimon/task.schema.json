@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nicoechaniz/tribe-bridge/daimon/task.schema.json",
+  "title": "Daimon task requirements v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "task_id",
+    "required_capabilities",
+    "required_tools",
+    "required_classification",
+    "required_trust_domains",
+    "required_realm",
+    "allow_partial"
+  ],
+  "properties": {
+    "schema": {
+      "const": "daimon-task-requirements/v1"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._@/-]{1,127}$"
+    },
+    "required_capabilities": {
+      "$ref": "#/$defs/unique_strings"
+    },
+    "required_tools": {
+      "$ref": "#/$defs/unique_strings"
+    },
+    "required_classification": {
+      "enum": [
+        "public",
+        "tribe-shared",
+        "internal",
+        "private"
+      ]
+    },
+    "required_trust_domains": {
+      "$ref": "#/$defs/unique_strings"
+    },
+    "required_realm": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._@/-]{1,127}$"
+        }
+      ]
+    },
+    "allow_partial": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "unique_strings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

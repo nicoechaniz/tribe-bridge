@@ -1,0 +1,188 @@
+{
+  "schema": "daimon-concept-inventory/v1",
+  "source": {
+    "uri": "https://hackmd.io/@nicoechaniz/daimon-matrix",
+    "observed_at": "2026-07-31",
+    "source_last_edited": "2026-07-07",
+    "sha256": "7f7cd51440c09893d1bac3261d39ddca5558f9d0457f665b77a042d1a7aae16b"
+  },
+  "governance_owner": "AlterMundi / Nicolás Echániz",
+  "concepts": [
+    {
+      "id": "me.definition",
+      "source_expression": "/me",
+      "classification": "partial",
+      "executable_mapping": "manifest.definition + manifest.subject",
+      "status_date": "2026-07-31",
+      "notes": "The source hash anchors identity language; prose never grants permissions."
+    },
+    {
+      "id": "me.inherits",
+      "source_expression": "/me.inherits",
+      "classification": "partial",
+      "executable_mapping": "manifest.lineage",
+      "status_date": "2026-07-31",
+      "notes": "Lineage is declared and hash-bound; merge semantics remain research."
+    },
+    {
+      "id": "me.identity",
+      "source_expression": "/me.identity",
+      "classification": "partial",
+      "executable_mapping": "manifest.subject + definition reference",
+      "status_date": "2026-07-31",
+      "notes": "Identity claims require governance review."
+    },
+    {
+      "id": "interference-pattern",
+      "source_expression": "experience as an interference pattern",
+      "classification": "metaphor",
+      "executable_mapping": null,
+      "status_date": "2026-07-31",
+      "notes": "Preserved as philosophy; not converted into scoring or authorization."
+    },
+    {
+      "id": "me.memory",
+      "source_expression": "/me.memory",
+      "classification": "implemented",
+      "executable_mapping": "manifest.memory_endpoints",
+      "status_date": "2026-07-31",
+      "notes": "HMK, Wiki, projection, and collective publication have distinct authority roles."
+    },
+    {
+      "id": "me.skills",
+      "source_expression": "/me.skills",
+      "classification": "partial",
+      "executable_mapping": "manifest.capabilities",
+      "status_date": "2026-07-31",
+      "notes": "Capabilities need immutable evidence; quality measurement is not implemented."
+    },
+    {
+      "id": "me.body",
+      "source_expression": "/me.body",
+      "classification": "partial",
+      "executable_mapping": "manifest.embodiment",
+      "status_date": "2026-07-31",
+      "notes": "Realm/body/surfaces are declarative."
+    },
+    {
+      "id": "me.body.sensors",
+      "source_expression": "/me.body.sensors",
+      "classification": "partial",
+      "executable_mapping": "manifest.embodiment.sensors -> capability IDs",
+      "status_date": "2026-07-31",
+      "notes": "No automatic hardware attestation yet."
+    },
+    {
+      "id": "me.body.actuators",
+      "source_expression": "/me.body.actuators",
+      "classification": "partial",
+      "executable_mapping": "manifest.embodiment.actuators -> capability IDs",
+      "status_date": "2026-07-31",
+      "notes": "Authorization stays in external policies."
+    },
+    {
+      "id": "me.body.tools",
+      "source_expression": "/me.body.tools",
+      "classification": "implemented",
+      "executable_mapping": "manifest.embodiment.tools -> capability IDs",
+      "status_date": "2026-07-31",
+      "notes": "Selector checks declared tools but cannot authorize tool calls."
+    },
+    {
+      "id": "we",
+      "source_expression": "/we",
+      "classification": "aspirational",
+      "executable_mapping": null,
+      "status_date": "2026-07-31",
+      "notes": "No reliable discovery of all likely next instances."
+    },
+    {
+      "id": "we.diff",
+      "source_expression": "/we.diff",
+      "classification": "partial",
+      "executable_mapping": "immutable manifest/generation comparison",
+      "status_date": "2026-07-31",
+      "notes": "Generic semantic state diff is not implemented."
+    },
+    {
+      "id": "we.pull",
+      "source_expression": "/we.pull and /we.incoming",
+      "classification": "aspirational",
+      "executable_mapping": null,
+      "status_date": "2026-07-31",
+      "notes": "Automatic identity/memory merging is unsafe without per-artifact ownership."
+    },
+    {
+      "id": "source.pull",
+      "source_expression": "/source.pull and /species.pull.name",
+      "classification": "aspirational",
+      "executable_mapping": null,
+      "status_date": "2026-07-31",
+      "notes": "Requires lineage discovery, consent, conflict policy, and provenance."
+    },
+    {
+      "id": "spatial-endpoints",
+      "source_expression": "/here and /near",
+      "classification": "aspirational",
+      "executable_mapping": "future communication scopes",
+      "status_date": "2026-07-31",
+      "notes": "No trusted proximity/realm attestation exists."
+    },
+    {
+      "id": "collective-endpoint",
+      "source_expression": "/all",
+      "classification": "partial",
+      "executable_mapping": "communication endpoint scope=all",
+      "status_date": "2026-07-31",
+      "notes": "Tribe v1 supports explicit groups, not an implicit universal audience."
+    },
+    {
+      "id": "realm",
+      "source_expression": "/realm, /realm.status, /realm.controls",
+      "classification": "partial",
+      "executable_mapping": "manifest.embodiment.realm",
+      "status_date": "2026-07-31",
+      "notes": "Status/control endpoints require separate realm-specific policies."
+    },
+    {
+      "id": "machine-roles",
+      "source_expression": "/perceptors, /actuators, /integrators",
+      "classification": "partial",
+      "executable_mapping": "capability.kind + embodiment references",
+      "status_date": "2026-07-31",
+      "notes": "Role labels do not imply trust."
+    },
+    {
+      "id": "human",
+      "source_expression": "/human and /human.tell",
+      "classification": "partial",
+      "executable_mapping": "communication endpoint scope=human",
+      "status_date": "2026-07-31",
+      "notes": "Human identity and consent remain deployment-specific."
+    },
+    {
+      "id": "tribe",
+      "source_expression": "/tribe",
+      "classification": "implemented",
+      "executable_mapping": "Tribe v1 explicit audiences + GitHub coordination",
+      "status_date": "2026-07-31",
+      "notes": "Messaging and work ownership are deliberately separate planes."
+    },
+    {
+      "id": "everyone",
+      "source_expression": "/everyone",
+      "classification": "aspirational",
+      "executable_mapping": null,
+      "status_date": "2026-07-31",
+      "notes": "Reachability is not identity, consent, or authorization."
+    },
+    {
+      "id": "capability-advertisement",
+      "source_expression": "a daimon can advertise its capabilities",
+      "classification": "partial",
+      "executable_mapping": "manifest.capabilities + explainable selector",
+      "status_date": "2026-07-31",
+      "notes": "Self-declaration is evidence-bound but not independently attested."
+    }
+  ]
+}

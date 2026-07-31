@@ -30,6 +30,13 @@ protected pull requests. See
 [`docs/multi-agent-github-coordination.md`](docs/multi-agent-github-coordination.md);
 local Tribe inboxes are notification paths, not ownership authority.
 
+Daimon Matrix identity/capability concepts are represented by closed,
+evidence-bound manifests and an explainable compatibility selector. They are
+descriptive and never authorize actions. See
+[`docs/daimon-matrix-operational-contract.md`](docs/daimon-matrix-operational-contract.md)
+and the consolidated
+[`adversarial review/roadmap`](docs/adversarial-review-and-roadmap.md).
+
 ## Components
 
 | Component | Purpose |
@@ -42,6 +49,7 @@ local Tribe inboxes are notification paths, not ownership authority.
 | `src/tribe_service_v1.py` | Bounded v1 HTTP broker service |
 | `src/tribe_client_v1.py` | Durable outbox, fallback, inbox deduplication, ACK |
 | `src/tribe_mirror_v1.py` | Telegram allowlists, provenance, escaping, public classification gate |
+| `src/daimon_manifest.py` | Closed instance/inventory validation and explainable task compatibility |
 | `integrations/hermes/send-to-agent-v1` | Hermes tools delegating to shared v1 clients |
 
 `scripts/flush_outbox_v1.py` retries envelopes durably staged while every route
