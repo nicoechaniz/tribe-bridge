@@ -258,6 +258,50 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 }
             )
 
+    def test_mirror_transparency_mode_renders_configured_direct_private(self):
+        payload = message_payload(
+            sender="alice",
+            to="worker@localhost",
+            text="coordination note",
+            classification="private",
+        )
+        direct = {
+            "audience": {"type": "direct", "id": "worker@localhost"},
+            "sender": {"id": "alice"},
+            "message_id": "019f0000-0000-7000-8000-000000000001",
+        }
+        policy = TelegramPolicy.from_values(
+            chat_ids=[-1001],
+            user_ids=[7],
+            audiences=["worker@localhost"],
+            classifications=["tribe-public", "private"],
+        )
+        rendered = policy.render(payload, direct)
+        self.assertIn("alice", rendered)
+        self.assertIn("worker@localhost", rendered)
+        self.assertIn(direct["message_id"], rendered)
+        # An unconfigured audience still fails closed.
+        with self.assertRaises(MirrorPolicyError):
+            TelegramPolicy.from_values(
+                chat_ids=[-1001],
+                user_ids=[7],
+                audiences=["public-agents"],
+                classifications=["tribe-public", "private"],
+            ).render(payload, direct)
+        # An unconfigured classification still fails closed.
+        restricted = TelegramPolicy.from_values(
+            chat_ids=[-1001],
+            user_ids=[7],
+            audiences=["worker@localhost"],
+        )
+        with self.assertRaises(MirrorPolicyError):
+            restricted.render(payload, direct)
+        # A non-group/non-direct audience type still fails closed.
+        weird = copy.deepcopy(direct)
+        weird["audience"] = {"type": "channel", "id": "worker@localhost"}
+        with self.assertRaises(MirrorPolicyError):
+            policy.render(payload, weird)
+
     def test_localhost_sender_never_wraps_or_delivers_to_remote_members(self):
         with self.assertRaisesRegex(
             LocalityPolicyError, "remote or mixed audience"

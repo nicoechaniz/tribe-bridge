@@ -21,6 +21,7 @@ class TelegramPolicy:
     allowed_chat_ids: frozenset[int]
     allowed_user_ids: frozenset[int]
     allowed_audiences: frozenset[str]
+    allowed_classifications: frozenset[str]
 
     @classmethod
     def from_values(
@@ -29,10 +30,13 @@ class TelegramPolicy:
         chat_ids: list[int],
         user_ids: list[int],
         audiences: list[str],
+        classifications: list[str] | None = None,
     ) -> "TelegramPolicy":
-        if not chat_ids or not user_ids or not audiences:
+        if classifications is None:
+            classifications = ["tribe-public"]
+        if not chat_ids or not user_ids or not audiences or not classifications:
             raise MirrorPolicyError(
-                "chat, user, and audience allowlists must be non-empty"
+                "chat, user, audience, and classification allowlists must be non-empty"
             )
         if any(not isinstance(value, int) for value in chat_ids + user_ids):
             raise MirrorPolicyError("Telegram IDs must be integers")
@@ -43,6 +47,7 @@ class TelegramPolicy:
             frozenset(chat_ids),
             frozenset(user_ids),
             frozenset(audiences),
+            frozenset(classifications),
         )
 
     def render(
@@ -52,19 +57,19 @@ class TelegramPolicy:
     ) -> str:
         audience = envelope["audience"]
         if (
-            audience["type"] != "group"
+            audience["type"] not in ("group", "direct")
             or audience["id"] not in self.allowed_audiences
-            or payload.get("classification") != "tribe-public"
+            or payload.get("classification") not in self.allowed_classifications
             or payload.get("schema") != "tribe-message/v1"
             or payload.get("from") != envelope["sender"]["id"]
             or payload.get("to") != audience["id"]
             or not isinstance(payload.get("text"), str)
         ):
             raise MirrorPolicyError(
-                "mirror only emits explicit tribe-public group messages"
+                "mirror only emits explicitly allowed tribe messages"
             )
         provenance = (
-            f'Tribe v1 · {envelope["sender"]["id"]} · '
+            f'Tribe v1 · {envelope["sender"]["id"]} → {audience["id"]} · '
             f'{envelope["message_id"]}'
         )
         return (

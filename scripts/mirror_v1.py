@@ -46,6 +46,11 @@ def main():
         chat_ids=json_list("TRIBE_TELEGRAM_ALLOWED_CHAT_IDS"),
         user_ids=json_list("TRIBE_TELEGRAM_ALLOWED_USER_IDS"),
         audiences=json_list("TRIBE_V1_MIRROR_AUDIENCES"),
+        classifications=json.loads(
+            os.environ.get(
+                "TRIBE_V1_MIRROR_CLASSIFICATIONS", '["tribe-public"]'
+            )
+        ),
     )
     telegram = TelegramClient(
         required("TRIBE_TELEGRAM_BOT_TOKEN"),
