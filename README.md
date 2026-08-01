@@ -91,9 +91,10 @@ tribe inbox
 tribe flush-outbox
 ```
 
-Set `TRIBE_CLIENT_ENV` to select a non-default local identity, or install the
-host default at `~/.config/tribe/client.env`. The command delegates to the
-reviewed v1 clients; it contains no v0 parser or fallback.
+Set `TRIBE_CLIENT_ENV` to select an identity, or install an explicit host
+default at `~/.config/tribe/client.env`. The command fails closed when neither
+exists; it never guesses that a multi-agent host should speak as Codex. It
+delegates to the reviewed v1 clients and contains no v0 parser or fallback.
 
 ## Endpoint policy: anyVPN first
 

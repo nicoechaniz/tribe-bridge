@@ -11,9 +11,8 @@ Commands:
   flush-outbox  Retry durably staged messages
   help          Show this help
 
-Set TRIBE_CLIENT_ENV to select a client identity. Otherwise the command uses
-$HOME/.config/tribe/client.env when present, then falls back to
-$HOME/.tribe-bridge/v1/client-codex.env.
+Set TRIBE_CLIENT_ENV to select a client identity, or install an explicit host
+default at $HOME/.config/tribe/client.env.
 EOF
 }
 
@@ -36,14 +35,7 @@ case "$command_name" in
         ;;
 esac
 
-client_env="${TRIBE_CLIENT_ENV:-}"
-if [[ -z "$client_env" ]]; then
-    if [[ -r "$HOME/.config/tribe/client.env" ]]; then
-        client_env="$HOME/.config/tribe/client.env"
-    else
-        client_env="$HOME/.tribe-bridge/v1/client-codex.env"
-    fi
-fi
+client_env="${TRIBE_CLIENT_ENV:-$HOME/.config/tribe/client.env}"
 if [[ ! -r "$client_env" ]]; then
     printf 'tribe: client environment is not readable: %s\n' "$client_env" >&2
     exit 2
