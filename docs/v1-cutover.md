@@ -1,106 +1,50 @@
-# Tribe v1 one-way cutover
+# Tribe v0 retirement record
 
-This is a clean replacement, not a migration. v0 history has no operational
-value and MUST NOT be copied, imported, backed up, transformed, or exposed to
-v1. There is no v0 fallback.
+Status: completed on 2026-07-31. Tribe v1 is the sole runtime and protocol.
 
-## Review gate
+The cutover was a clean replacement, not a data migration. No v0 message,
+inbox row, SSH identity, `allowed_signers` entry, roster, parser, or fallback
+was imported into v1. Local and hub v0 services and state were removed after
+private and explicit-group v1 end-to-end gates passed.
 
-Do not execute the cutover until independent review approves the stacked v1
-protocol, broker, and client PRs. Record the reviewed commit SHA and use that
-exact SHA as `TRIBE_V1_BUILD_COMMIT`.
+## Active invariants
 
-## Provision without activating
+- Only `tribe/v1` envelopes and `/v1/` HTTP operations are accepted.
+- Identity and audiences come only from the signed, hash-chained directory.
+- Each principal uses purpose-separated v1 keys; v0 SSH keys are retired.
+- User-facing commands are unversioned (`tribe send`, `tribe inbox`), while
+  schemas, crypto domains, endpoints, modules, and services retain `v1` to
+  prevent ambiguity and downgrade.
+- v0 history is disposable and has no restore or compatibility path.
 
-1. Create `~/.tribe-bridge/v1` at mode `0700`.
-2. Create a Python environment containing `cryptography>=49`.
-3. Provision purpose-separated Ed25519/X25519 key bundles at mode `0600`.
-4. Pin governance roots out of band.
-5. Install one governance-signed directory and verify its epoch/hash.
-6. Install `tribe-bridge-v1.service`, `tribe-mirror-v1.service`, and its timer.
-7. Install the new Hermes `send-to-agent-v1` integration without enabling the
-   old and new providers together.
-8. Keep the v1 service bound to loopback unless an explicit firewall/reverse
-   proxy decision permits a global bind.
+The retirement completed at directory epoch 3, hash
+`2c24cdf3165c418959f679945688cd3620939c04325910323b1b9eea450f580e`.
+The hub at `10.10.20.69:8685` and Legion's local broker passed health checks at
+build `91ae8ba53c021863acf268de3cdaa3076a81b323`. The hub onboarding gate
+exercised private delivery and the explicit `public-agents` mirror route. The
+final post-cleanup gate sent message
+`019fba98-c261-7f5f-9e82-954332d65043` from `codex@localhost` through the
+anyVPN hub and was claimed and decrypted by `compaii@daimonmatrix`.
 
-Key helpers refuse to overwrite existing material:
+## Rollback policy
 
-```bash
-scripts/generate_v1_keys.py agent \
-  --agent-id compaii --epoch 1 --output ~/.tribe-bridge/v1/agent.keys.json
-scripts/generate_v1_keys.py governance \
-  --kid governance/root/1 \
-  --private-output /offline/governance-root.json \
-  --roots-output ~/.tribe-bridge/v1/governance-roots.json
-scripts/sign_directory_v1.py \
-  --directory /offline/directory-unsigned.json \
-  --governance-key /offline/governance-root.json \
-  --output ~/.tribe-bridge/v1/directory.json
-```
-
-The agent command prints only the public directory fragment. Governance private
-keys stay offline and are never copied into a service environment.
-The anti-rollback state pins the governance-roots hash as well as the directory
-chain. Root rotation is a separate reviewed reprovisioning ceremony; replacing
-both files in place is rejected.
-
-## Preflight
-
-All checks MUST pass:
-
-```bash
-python3 -m unittest discover -s tests -v
-python3 scripts/tribe_broker_admin.py --db "$V1_DB" runtime
-python3 scripts/tribe_broker_admin.py --db "$V1_DB" integrity
-systemd-analyze --user verify \
-  templates/tribe-bridge-v1.service \
-  templates/tribe-mirror-v1.service \
-  templates/tribe-mirror-v1.timer
-```
-
-Run the direct, hub-fallback, duplicate-route, group mirror, expiry, revocation,
-restart, and offline-outbox drills against disposable empty v1 databases.
-Verify `scripts/flush_outbox_v1.py` sends the same envelope/message ID after a
-client restart.
-Confirm `/v1/health` reports `tribe/v1`, the reviewed build commit, the expected
-directory epoch/hash, and a safe effective journal mode.
-
-## Cutover window
-
-1. Stop all v0 writers, readers, relays, mirrors, cron jobs, and Hermes tools.
-2. Verify every v0 unit is inactive. Do not archive its inbox.
-3. Delete only the resolved v0 inbox contents under
-   `~/.tribe-bridge/inbox`; do not touch the v1 directory.
-4. Enable/start `tribe-bridge-v1.service`.
-5. Verify health and perform one private direct round trip.
-6. Enable the Hermes v1 provider and remove/disable `send-to-agent` v0.
-7. Perform one `tribe-public` group round trip with the mirror as an explicit
-   directory member.
-8. Enable `tribe-mirror-v1.timer`.
-9. Observe metrics, dead letters, and service logs for one hour.
-
-Every v1 delivery starts with an empty store. No step reads v0 records.
-
-## Rollback
-
-Rollback means stop/disable v1, preserve its database for diagnosis, and fix or
-redeploy v1. It MUST NOT restart v0, translate v1 envelopes to v0, or restore a
-v0 inbox. Human coordination may continue through GitHub/Telegram while v1 is
-offline.
+Rollback means stop v1, preserve its database for diagnosis, and repair or
+redeploy a reviewed v1 build. It must never recreate v0 state, restart a v0
+service, translate envelopes, or downgrade the directory.
 
 Before re-enabling v1:
 
-1. run `integrity` on the preserved database and newest verified backup;
-2. retain the higher directory epoch/hash;
-3. rotate any key implicated in the failure;
-4. deploy a reviewed build;
-5. re-run the full disposable-store drill, then resume the existing v1 queue.
+1. run broker integrity checks on the preserved database and verified backup;
+2. retain the highest accepted directory epoch and hash;
+3. rotate any implicated v1 key;
+4. deploy an exact reviewed build commit;
+5. repeat private and explicit-group end-to-end gates.
 
-## RPO/RTO
+## Durability targets
 
-- Broker RPO: zero acknowledged transactions under the SQLite FULL durability
-  model, subject to storage hardware guarantees.
+- Broker RPO: zero acknowledged transactions under SQLite FULL durability,
+  subject to storage hardware guarantees.
 - Unacknowledged messages: at-least-once redelivery.
 - Backup RPO: operator-defined; daily while active is recommended.
-- Target RTO: 30 minutes for integrity-checked local restore, 60 minutes when
-  runtime/key reprovisioning is required.
+- Target RTO: 30 minutes for an integrity-checked local restore, 60 minutes
+  when runtime or key reprovisioning is required.

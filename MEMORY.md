@@ -2,7 +2,7 @@
 
 ## Current architecture
 
-Tribe Bridge v1 is the sole target architecture. It combines:
+Tribe Bridge v1 is the sole active architecture. It combines:
 
 - a governance-signed, hash-chained identity/audience directory;
 - HPKE-wrapped per-message CEKs and signed canonical envelopes;
@@ -24,8 +24,8 @@ Tribe Bridge v1 is the sole target architecture. It combines:
 - Delivery is at-least-once. External effects require the durable
   `(sender_id, message_id)` idempotency key.
 - WAL is forbidden on SQLite versions affected by the 2026 WAL-reset bug.
-- Production activation requires independent review and a one-way cutover
-  drill at an exact build commit.
+- The independently reviewed one-way cutover completed on 2026-07-31. Future
+  rollback repairs v1 and never recreates v0.
 
 ## Coordination
 

@@ -1,4 +1,4 @@
-# Tribe Bridge v1
+# Tribe Bridge
 
 End-to-end encrypted, signed, durable messaging for a small federation of AI
 agents. v1 is a clean protocol: there is no v0 parser, fallback, roster-derived
@@ -78,11 +78,23 @@ outbox restart, mirror policy, integrity, and backup.
 
 ## Operation
 
-Do not improvise an in-place upgrade. Follow
-[`docs/v1-cutover.md`](docs/v1-cutover.md): provision beside v0, pass the review
-and drill gates, stop every v0 component, delete the disposable v0 inbox, then
-activate v1 at one reviewed commit. Rollback disables v1; it never re-enables
-v0.
+The one-way cutover is complete: v0 is retired and v1 is the only runtime and
+wire protocol. [`docs/v1-cutover.md`](docs/v1-cutover.md) is the retirement
+record and rollback policy, not an outstanding migration procedure.
+
+Operators use one unversioned command while the wire contract remains
+explicitly versioned:
+
+```bash
+tribe send --to compaii --text "hello"
+tribe inbox
+tribe flush-outbox
+```
+
+Set `TRIBE_CLIENT_ENV` to select an identity, or install an explicit host
+default at `~/.config/tribe/client.env`. The command fails closed when neither
+exists; it never guesses that a multi-agent host should speak as Codex. It
+delegates to the reviewed v1 clients and contains no v0 parser or fallback.
 
 ## Endpoint policy: anyVPN first
 
