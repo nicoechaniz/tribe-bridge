@@ -47,6 +47,7 @@ AUDIENCE_FIELDS = {
     "members",
     "allowed_senders",
 }
+AUDIENCE_OPTIONAL_FIELDS = {"observers"}
 ROOTS_FIELDS = {"schema", "threshold", "keys"}
 STATE_FIELDS = {
     "schema",
@@ -140,6 +141,26 @@ def _exact(value: Any, fields: set[str], label: str) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != fields:
         raise DirectoryError(f"invalid {label} fields")
     return value
+
+
+def _exact_with_optional(
+    value: Any,
+    fields: set[str],
+    optional_fields: set[str],
+    label: str,
+) -> dict[str, Any]:
+    if (
+        not isinstance(value, dict)
+        or not fields <= set(value)
+        or not set(value) <= fields | optional_fields
+    ):
+        raise DirectoryError(f"invalid {label} fields")
+    return value
+
+
+def audience_recipients(audience: dict[str, Any]) -> list[str]:
+    """Return members and explicitly governed observers for an audience."""
+    return [*audience["members"], *audience.get("observers", [])]
 
 
 def _identifier(value: Any) -> str:
@@ -277,7 +298,12 @@ def validate_directory(
         raise DirectoryError("directory must contain audiences")
     audience_keys = set()
     for audience in audiences:
-        _exact(audience, AUDIENCE_FIELDS, "audience")
+        _exact_with_optional(
+            audience,
+            AUDIENCE_FIELDS,
+            AUDIENCE_OPTIONAL_FIELDS,
+            "audience",
+        )
         if audience["type"] not in {"direct", "group"}:
             raise DirectoryError("invalid audience type")
         audience_id = _identifier(audience["id"])
@@ -305,6 +331,31 @@ def validate_directory(
             audience_id
         ]:
             raise DirectoryError("direct audience must contain only its ID")
+        observers = audience.get("observers")
+        if observers is not None:
+            if audience["type"] != "direct":
+                raise DirectoryError(
+                    "observers are only valid for direct audiences"
+                )
+            if (
+                not isinstance(observers, list)
+                or not observers
+                or len(observers) >= protocol.MAX_RECIPIENTS
+            ):
+                raise DirectoryError("invalid audience observers")
+            normalized = [_identifier(value) for value in observers]
+            if len(set(normalized)) != len(normalized):
+                raise DirectoryError("duplicate audience observers")
+            if not set(normalized) <= agent_ids:
+                raise DirectoryError("unknown agent in audience observers")
+            if set(normalized) & set(audience["members"]):
+                raise DirectoryError("audience observers must not be members")
+            if set(normalized) & set(audience["allowed_senders"]):
+                raise DirectoryError(
+                    "audience observers must not be allowed senders"
+                )
+            if len(audience_recipients(audience)) > protocol.MAX_RECIPIENTS:
+                raise DirectoryError("too many audience recipients")
     protocol.canonical_json(snapshot)
     return snapshot
 
@@ -494,10 +545,11 @@ class Directory:
                 f'{audience["type"]}:{audience["id"]}:'
                 f'{audience["epoch"]}'
             )
-            audience_members[key] = audience["members"]
+            recipients = audience_recipients(audience)
+            audience_members[key] = recipients
             if sender_id in audience["allowed_senders"]:
                 authorized.append(key)
-            if receiver_id in audience["members"]:
+            if receiver_id in recipients:
                 receiver_audiences.append(key)
         return {
             "now_ms": now_ms,

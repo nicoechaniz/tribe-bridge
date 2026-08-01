@@ -17,7 +17,13 @@ from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from cryptography.hazmat.primitives.hpke import AEAD, KDF, KEM, Suite
 
 import tribe_protocol_v1 as protocol
-from tribe_directory_v1 import Directory, DirectoryError, b64url_decode, strict_json
+from tribe_directory_v1 import (
+    Directory,
+    DirectoryError,
+    audience_recipients,
+    b64url_decode,
+    strict_json,
+)
 from tribe_locality_v1 import enforce_localhost_boundary
 
 
@@ -216,8 +222,9 @@ def encrypt_envelope(
     audience = directory.audience(
         audience_type, audience_id, audience_epoch
     )
+    recipients = audience_recipients(audience)
     enforce_localhost_boundary(
-        keys.agent_id, audience["members"], local_agent_ids
+        keys.agent_id, recipients, local_agent_ids
     )
     if keys.agent_id not in audience["allowed_senders"]:
         raise DirectoryError("sender is not authorized for audience")
@@ -245,7 +252,7 @@ def encrypt_envelope(
         "payload": {"nonce": "", "ciphertext": ""},
         "recipients": [],
     }
-    for recipient_id in audience["members"]:
+    for recipient_id in recipients:
         key = directory.active_key(recipient_id, "encryption", now)
         envelope["recipients"].append(
             {

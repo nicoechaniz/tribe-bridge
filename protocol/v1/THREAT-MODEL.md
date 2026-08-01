@@ -62,6 +62,18 @@ encryption keys. Group membership does not imply a shared group key. Adding a
 member produces a new audience epoch and affects only newly created envelopes.
 Removing a member cannot erase plaintext or keys it already obtained.
 
+### Direct audience observer
+
+An observer is explicit, visible authorization in a governance-signed direct
+audience epoch. It receives its own CEK wrap and can therefore read only new
+envelopes created while that observer declaration is active. Observer status
+does not alter `members`, grant sender authority, expose historical envelopes,
+or authorize any other audience. Adding or removing an observer requires a new
+signed directory epoch; removal cannot erase plaintext or keys already
+obtained. Compromise of an observer or its encryption key has the same
+confidentiality consequences as compromise of a recipient key for envelopes
+wrapped to it.
+
 ### Compromised sender key
 
 An attacker can forge messages until the signing key is marked compromised.

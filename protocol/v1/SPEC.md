@@ -126,29 +126,34 @@ agent-id/enc/epoch
 
 An audience is `(type, id, epoch)`, where type is `direct` or `group`.
 
-For a direct message, the recipient set MUST contain exactly one entry and its
-ID MUST equal the audience ID. For a group, the recipient set MUST contain one
-entry for every member authorized in that exact audience epoch. Recipient IDs
-MUST be unique and the set is capped at 256.
+For a direct message, `members` MUST remain exactly `[audience.id]`. A signed
+directory epoch MAY additionally declare a non-empty `observers` list for that
+direct audience. The effective recipient set is the member plus every observer
+declared in that exact epoch. Observers receive an independent CEK wrap and
+broker delivery, but do not become members and gain no sender authority. Group
+audiences MUST NOT declare observers; their recipient set contains one entry
+for every member authorized in that exact audience epoch. Recipient IDs MUST be
+unique and the effective set is capped at 256.
 
 The broker MUST verify that:
 
 - the sender is authorized to publish to that audience epoch;
-- each recipient is a member of that epoch;
+- each recipient is a member or explicit direct observer of that epoch;
 - each `encryption_kid` is active and owned by its recipient;
 - the recipient set exactly matches policy.
 
 An agent ID ending in `@localhost` denotes an embodiment-local principal.
 Every sender and broker deployment MUST have an explicit, non-empty set of
 principals local to that machine. Before generating a CEK, nonce, or HPKE wrap,
-an `@localhost` sender MUST verify that it and every audience member are in the
-local set. Outbox retry and broker admission MUST repeat this check. A remote
-or mixed recipient set MUST fail closed. The local set only narrows directory
-authorization; it MUST NOT grant audience membership or sender authority.
+an `@localhost` sender MUST verify that it and every effective recipient are in
+the local set. Outbox retry and broker admission MUST repeat this check. A
+remote or mixed recipient set MUST fail closed. The local set only narrows
+directory authorization; it MUST NOT grant audience membership, observer
+status, or sender authority.
 
-The endpoint MUST independently verify its audience membership and require
-exactly one wrap to an active encryption key it owns. A group name alone never
-grants access.
+The endpoint MUST independently verify its audience membership or signed
+observer status and require exactly one wrap to an active encryption key it
+owns. An audience name alone never grants access.
 
 ## 6. Identity directory and authorization
 
@@ -159,7 +164,8 @@ a monotonically increasing `directory_epoch`. A snapshot contains:
 - agent IDs and status;
 - signing and encryption public keys, owners, purposes, epochs, validity
   windows, and status;
-- audience epochs, members, allowed senders, and status;
+- audience epochs, members, optional direct observers, allowed senders, and
+  status;
 - revocations and their reason/mode;
 - snapshot issue/expiry times and previous-snapshot hash.
 
