@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror only explicitly addressed tribe-public v1 messages to Telegram."""
+"""Mirror only explicitly allowed Tribe v1 messages to Telegram."""
 
 import json
 import os
@@ -32,6 +32,16 @@ def json_list(name):
     return value
 
 
+def optional_json_list(name, default):
+    raw = os.environ.get(name)
+    if raw is None:
+        return list(default)
+    value = json.loads(raw)
+    if not isinstance(value, list):
+        raise RuntimeError(f"{name} must be a JSON list")
+    return value
+
+
 def main():
     now = int(time.time() * 1000)
     directory = Directory.load(
@@ -46,10 +56,11 @@ def main():
         chat_ids=json_list("TRIBE_TELEGRAM_ALLOWED_CHAT_IDS"),
         user_ids=json_list("TRIBE_TELEGRAM_ALLOWED_USER_IDS"),
         audiences=json_list("TRIBE_V1_MIRROR_AUDIENCES"),
-        classifications=json.loads(
-            os.environ.get(
-                "TRIBE_V1_MIRROR_CLASSIFICATIONS", '["tribe-public"]'
-            )
+        audience_types=optional_json_list(
+            "TRIBE_V1_MIRROR_AUDIENCE_TYPES", ["group"]
+        ),
+        classifications=optional_json_list(
+            "TRIBE_V1_MIRROR_CLASSIFICATIONS", ["tribe-public"]
         ),
     )
     telegram = TelegramClient(

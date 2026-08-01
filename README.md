@@ -51,7 +51,7 @@ and the consolidated
 | `src/tribe_transport_v1.py` | Signed HTTP request authentication |
 | `src/tribe_service_v1.py` | Bounded v1 HTTP broker service |
 | `src/tribe_client_v1.py` | Durable outbox, fallback, inbox deduplication, ACK |
-| `src/tribe_mirror_v1.py` | Telegram allowlists, provenance, escaping, public classification gate |
+| `src/tribe_mirror_v1.py` | Telegram allowlists, provenance, escaping, audience-type and classification gates |
 | `src/daimon_manifest.py` | Closed instance/inventory validation and explainable task compatibility |
 | `integrations/hermes/send-to-agent-v1` | Hermes tools delegating to shared v1 clients |
 
