@@ -16,11 +16,17 @@ class MirrorPolicyError(ValueError):
     pass
 
 
+_ALLOWED_AUDIENCE_TYPES = frozenset({"group", "direct"})
+_ALLOWED_CLASSIFICATIONS = frozenset({"tribe-public", "private"})
+
+
 @dataclass(frozen=True)
 class TelegramPolicy:
     allowed_chat_ids: frozenset[int]
     allowed_user_ids: frozenset[int]
     allowed_audiences: frozenset[str]
+    allowed_audience_types: frozenset[str]
+    allowed_classifications: frozenset[str]
 
     @classmethod
     def from_values(
@@ -29,20 +35,46 @@ class TelegramPolicy:
         chat_ids: list[int],
         user_ids: list[int],
         audiences: list[str],
+        audience_types: list[str] | None = None,
+        classifications: list[str] | None = None,
     ) -> "TelegramPolicy":
-        if not chat_ids or not user_ids or not audiences:
+        if audience_types is None:
+            audience_types = ["group"]
+        if classifications is None:
+            classifications = ["tribe-public"]
+        if (
+            not chat_ids
+            or not user_ids
+            or not audiences
+            or not audience_types
+            or not classifications
+        ):
             raise MirrorPolicyError(
-                "chat, user, and audience allowlists must be non-empty"
+                "mirror allowlists must be non-empty"
             )
         if any(not isinstance(value, int) for value in chat_ids + user_ids):
             raise MirrorPolicyError("Telegram IDs must be integers")
         for audience in audiences:
             if not protocol.IDENTIFIER.fullmatch(audience):
                 raise MirrorPolicyError("invalid allowed audience")
+        if (
+            not isinstance(audience_types, list)
+            or any(not isinstance(value, str) for value in audience_types)
+            or not set(audience_types) <= _ALLOWED_AUDIENCE_TYPES
+        ):
+            raise MirrorPolicyError("invalid allowed audience types")
+        if (
+            not isinstance(classifications, list)
+            or any(not isinstance(value, str) for value in classifications)
+            or not set(classifications) <= _ALLOWED_CLASSIFICATIONS
+        ):
+            raise MirrorPolicyError("invalid allowed classifications")
         return cls(
             frozenset(chat_ids),
             frozenset(user_ids),
             frozenset(audiences),
+            frozenset(audience_types),
+            frozenset(classifications),
         )
 
     def render(
@@ -52,19 +84,19 @@ class TelegramPolicy:
     ) -> str:
         audience = envelope["audience"]
         if (
-            audience["type"] != "group"
+            audience["type"] not in self.allowed_audience_types
             or audience["id"] not in self.allowed_audiences
-            or payload.get("classification") != "tribe-public"
+            or payload.get("classification") not in self.allowed_classifications
             or payload.get("schema") != "tribe-message/v1"
             or payload.get("from") != envelope["sender"]["id"]
             or payload.get("to") != audience["id"]
             or not isinstance(payload.get("text"), str)
         ):
             raise MirrorPolicyError(
-                "mirror only emits explicit tribe-public group messages"
+                "mirror only emits explicitly allowed tribe messages"
             )
         provenance = (
-            f'Tribe v1 · {envelope["sender"]["id"]} · '
+            f'Tribe v1 · {envelope["sender"]["id"]} → {audience["id"]} · '
             f'{envelope["message_id"]}'
         )
         return (

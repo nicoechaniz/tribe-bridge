@@ -258,6 +258,106 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 }
             )
 
+    def test_mirror_transparency_mode_renders_configured_direct_private(self):
+        payload = message_payload(
+            sender="alice",
+            to="worker@localhost",
+            text="coordination note",
+            classification="private",
+        )
+        direct = {
+            "audience": {"type": "direct", "id": "worker@localhost"},
+            "sender": {"id": "alice"},
+            "message_id": "019f0000-0000-7000-8000-000000000001",
+        }
+        policy = TelegramPolicy.from_values(
+            chat_ids=[-1001],
+            user_ids=[7],
+            audiences=["worker@localhost"],
+            audience_types=["direct"],
+            classifications=["tribe-public", "private"],
+        )
+        rendered = policy.render(payload, direct)
+        self.assertIn("alice", rendered)
+        self.assertIn("worker@localhost", rendered)
+        self.assertIn(direct["message_id"], rendered)
+        # An unconfigured audience still fails closed.
+        with self.assertRaises(MirrorPolicyError):
+            TelegramPolicy.from_values(
+                chat_ids=[-1001],
+                user_ids=[7],
+                audiences=["public-agents"],
+                audience_types=["direct"],
+                classifications=["tribe-public", "private"],
+            ).render(payload, direct)
+        # An unconfigured classification still fails closed.
+        restricted_classification = TelegramPolicy.from_values(
+            chat_ids=[-1001],
+            user_ids=[7],
+            audiences=["worker@localhost"],
+            audience_types=["direct"],
+        )
+        with self.assertRaises(MirrorPolicyError):
+            restricted_classification.render(payload, direct)
+        # An unconfigured audience type still fails closed.
+        restricted_type = TelegramPolicy.from_values(
+            chat_ids=[-1001],
+            user_ids=[7],
+            audiences=["worker@localhost"],
+            classifications=["tribe-public", "private"],
+        )
+        with self.assertRaises(MirrorPolicyError):
+            restricted_type.render(payload, direct)
+        # A non-group/non-direct audience type still fails closed.
+        weird = copy.deepcopy(direct)
+        weird["audience"] = {"type": "channel", "id": "worker@localhost"}
+        with self.assertRaises(MirrorPolicyError):
+            policy.render(payload, weird)
+
+        # The complete default remains group-only even if a direct audience
+        # identifier is already present in the audience allowlist.
+        public_direct = copy.deepcopy(payload)
+        public_direct["classification"] = "tribe-public"
+        with self.assertRaises(MirrorPolicyError):
+            TelegramPolicy.from_values(
+                chat_ids=[-1001],
+                user_ids=[7],
+                audiences=["worker@localhost"],
+            ).render(public_direct, direct)
+
+    def test_mirror_policy_rejects_malformed_transparency_allowlists(self):
+        base = {
+            "chat_ids": [-1001],
+            "user_ids": [7],
+            "audiences": ["worker@localhost"],
+        }
+        invalid_classifications = (
+            {"private": False},
+            "private",
+            [1],
+            ["unknown"],
+            [],
+        )
+        for classifications in invalid_classifications:
+            with self.subTest(classifications=classifications):
+                with self.assertRaises(MirrorPolicyError):
+                    TelegramPolicy.from_values(
+                        **base, classifications=classifications
+                    )
+        invalid_audience_types = (
+            {"direct": False},
+            "direct",
+            [1],
+            ["channel"],
+            [],
+        )
+        for audience_types in invalid_audience_types:
+            with self.subTest(audience_types=audience_types):
+                with self.assertRaises(MirrorPolicyError):
+                    TelegramPolicy.from_values(
+                        **base, audience_types=audience_types
+                    )
+
     def test_localhost_sender_never_wraps_or_delivers_to_remote_members(self):
         with self.assertRaisesRegex(
             LocalityPolicyError, "remote or mixed audience"
