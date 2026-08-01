@@ -51,6 +51,9 @@ def main():
                 "TRIBE_V1_MIRROR_CLASSIFICATIONS", '["tribe-public"]'
             )
         ),
+        audience_types=json.loads(
+            os.environ.get("TRIBE_V1_MIRROR_AUDIENCE_TYPES", '["group"]')
+        ),
     )
     telegram = TelegramClient(
         required("TRIBE_TELEGRAM_BOT_TOKEN"),

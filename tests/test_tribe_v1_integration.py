@@ -275,11 +275,21 @@ class TribeV1IntegrationTests(unittest.TestCase):
             user_ids=[7],
             audiences=["worker@localhost"],
             classifications=["tribe-public", "private"],
+            audience_types=["group", "direct"],
         )
         rendered = policy.render(payload, direct)
         self.assertIn("alice", rendered)
         self.assertIn("worker@localhost", rendered)
         self.assertIn(direct["message_id"], rendered)
+        # Default audience types stay group-only: a direct envelope fails
+        # closed even when its id and classification are allowed.
+        with self.assertRaises(MirrorPolicyError):
+            TelegramPolicy.from_values(
+                chat_ids=[-1001],
+                user_ids=[7],
+                audiences=["worker@localhost"],
+                classifications=["tribe-public", "private"],
+            ).render(payload, direct)
         # An unconfigured audience still fails closed.
         with self.assertRaises(MirrorPolicyError):
             TelegramPolicy.from_values(
@@ -287,20 +297,35 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 user_ids=[7],
                 audiences=["public-agents"],
                 classifications=["tribe-public", "private"],
+                audience_types=["group", "direct"],
             ).render(payload, direct)
         # An unconfigured classification still fails closed.
         restricted = TelegramPolicy.from_values(
             chat_ids=[-1001],
             user_ids=[7],
             audiences=["worker@localhost"],
+            audience_types=["direct"],
         )
         with self.assertRaises(MirrorPolicyError):
             restricted.render(payload, direct)
-        # A non-group/non-direct audience type still fails closed.
-        weird = copy.deepcopy(direct)
-        weird["audience"] = {"type": "channel", "id": "worker@localhost"}
-        with self.assertRaises(MirrorPolicyError):
-            policy.render(payload, weird)
+        # Malformed classification/audience-type values are rejected at
+        # policy construction, never coerced into permissions.
+        for bad in ({"private": False}, "private", [1], ["internal"]):
+            with self.assertRaises(MirrorPolicyError):
+                TelegramPolicy.from_values(
+                    chat_ids=[-1001],
+                    user_ids=[7],
+                    audiences=["worker@localhost"],
+                    classifications=bad,
+                )
+        for bad_types in ({"direct": True}, "direct", [1], ["channel"]):
+            with self.assertRaises(MirrorPolicyError):
+                TelegramPolicy.from_values(
+                    chat_ids=[-1001],
+                    user_ids=[7],
+                    audiences=["worker@localhost"],
+                    audience_types=bad_types,
+                )
 
     def test_localhost_sender_never_wraps_or_delivers_to_remote_members(self):
         with self.assertRaisesRegex(
