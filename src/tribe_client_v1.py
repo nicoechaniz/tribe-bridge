@@ -17,6 +17,10 @@ import tribe_protocol_v1 as protocol
 from tribe_broker_v1 import SQLiteBroker, ack_preimage
 from tribe_crypto_v1 import KeyBundle, b64url, decrypt_envelope
 from tribe_directory_v1 import Directory
+from tribe_locality_v1 import (
+    LocalityPolicyError,
+    enforce_localhost_boundary,
+)
 from tribe_transport_v1 import wrap_request
 
 
@@ -104,12 +108,18 @@ def send_with_fallback(
     endpoints: list[str],
     *,
     keys: KeyBundle,
+    local_agent_ids: frozenset[str],
     outbox: SQLiteBroker,
     now_ms: int | None = None,
     timeout: float = 10,
 ) -> dict[str, Any]:
     if not endpoints:
         raise ValueError("at least one endpoint is required")
+    enforce_localhost_boundary(
+        envelope["sender"]["id"],
+        (item["id"] for item in envelope["recipients"]),
+        local_agent_ids,
+    )
     now = int(time.time() * 1000) if now_ms is None else now_ms
     staged = outbox.stage_outbox(envelope, now_ms=now)
     claims = outbox.claim_outbox(
@@ -191,6 +201,7 @@ def flush_outbox(
     routes: dict[str, Any],
     *,
     keys: KeyBundle,
+    local_agent_ids: frozenset[str],
     now_ms: int | None = None,
     limit: int = 20,
     timeout: float = 10,
@@ -203,6 +214,25 @@ def flush_outbox(
     pending = []
     dead = []
     for claim in claims:
+        try:
+            enforce_localhost_boundary(
+                claim["envelope"]["sender"]["id"],
+                (
+                    item["id"]
+                    for item in claim["envelope"]["recipients"]
+                ),
+                local_agent_ids,
+            )
+        except LocalityPolicyError as exc:
+            outbox.complete_outbox(
+                claim["outbox_id"],
+                claim["lease_id"],
+                error=str(exc),
+                terminal_error=True,
+                now_ms=now,
+            )
+            dead.append(claim["outbox_id"])
+            continue
         audience_id = claim["envelope"]["audience"]["id"]
         endpoints = route_endpoints(routes, audience_id)
         if not endpoints:

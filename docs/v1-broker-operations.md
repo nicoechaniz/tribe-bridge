@@ -3,6 +3,21 @@
 The v1 broker uses a new empty database. It never opens, imports, migrates, or
 backs up a v0 inbox.
 
+## Embodiment-local principals
+
+Every broker and sender requires a non-empty JSON
+`TRIBE_V1_LOCAL_AGENT_IDS` set owned by the deployment. An ID ending in
+`@localhost` may send only when both it and every concrete envelope recipient
+are in that set. The sender checks before generating the CEK, nonce, or HPKE
+wraps; outbox retry rechecks old envelopes; broker admission is the final
+independent gate. A remote broker therefore rejects an `@localhost` principal,
+and a mixed group cannot become an exfiltration path.
+
+The set is an additional restriction, not an authority source: membership does
+not override the governance-signed directory, audience epoch, or allowed
+senders. Harnesses must inject `TRIBE_CLIENT_ENV`; the operator command has no
+default identity.
+
 ## Durability contract
 
 - `BrokerBackend` is the backend-neutral interface: atomic `enqueue`, `claim`,

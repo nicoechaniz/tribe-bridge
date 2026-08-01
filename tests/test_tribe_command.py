@@ -33,10 +33,10 @@ class TribeCommandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("unknown command: v0", result.stderr)
 
-    def test_send_requires_explicit_identity_or_host_default(self):
+    def test_send_requires_explicit_identity(self):
         with tempfile.TemporaryDirectory() as home:
             result = subprocess.run(
-                ["bash", str(COMMAND), "send", "--to", "compaii", "--text", "hi"],
+                ["bash", str(COMMAND), "send", "--to", "peer", "--text", "hi"],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -44,7 +44,7 @@ class TribeCommandTests(unittest.TestCase):
             )
 
         self.assertEqual(result.returncode, 2)
-        self.assertIn("client environment is not readable", result.stderr)
+        self.assertIn("TRIBE_CLIENT_ENV is required", result.stderr)
 
 
 if __name__ == "__main__":

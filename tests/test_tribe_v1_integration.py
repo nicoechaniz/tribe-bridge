@@ -35,6 +35,7 @@ from tribe_directory_v1 import (
     directory_sha256,
 )
 from tribe_mirror_v1 import MirrorPolicyError, TelegramPolicy
+from tribe_locality_v1 import LocalityPolicyError
 from tribe_service_v1 import (
     BoundedThreadingHTTPServer,
     TribeV1Handler,
@@ -64,16 +65,17 @@ class TribeV1IntegrationTests(unittest.TestCase):
             self.material["state_path"],
             now_ms=NOW,
         )
+        self.local_agent_ids = frozenset(self.directory.agents)
         self.alice = KeyBundle.load(self.material["bundles"]["alice"])
-        self.codex = KeyBundle.load(
-            self.material["bundles"]["codex@localhost"]
+        self.worker = KeyBundle.load(
+            self.material["bundles"]["worker@localhost"]
         )
         self.mirror = KeyBundle.load(
             self.material["bundles"]["mirror"]
         )
         self.clock = MutableClock(NOW)
 
-    def service(self, name):
+    def service(self, name, *, local_agent_ids=None):
         broker = SQLiteBroker(
             self.root / f"{name}.sqlite", clock_ms=self.clock
         )
@@ -81,6 +83,11 @@ class TribeV1IntegrationTests(unittest.TestCase):
             broker,
             self.directory,
             build_commit="a" * 40,
+            local_agent_ids=(
+                self.local_agent_ids
+                if local_agent_ids is None
+                else frozenset(local_agent_ids)
+            ),
             clock_ms=self.clock,
         )
 
@@ -110,17 +117,39 @@ class TribeV1IntegrationTests(unittest.TestCase):
     def direct_envelope(self, ttl_ms=60_000):
         payload = message_payload(
             sender="alice",
-            to="codex@localhost",
-            text="hola <codex>",
+            to="worker@localhost",
+            text="hola <worker>",
         )
         return encrypt_envelope(
             payload,
             directory=self.directory,
             keys=self.alice,
             audience_type="direct",
-            audience_id="codex@localhost",
+            audience_id="worker@localhost",
+            local_agent_ids=self.local_agent_ids,
             now_ms=NOW,
             ttl_ms=ttl_ms,
+        )
+
+    def worker_envelope(
+        self, audience_type, audience_id, *, local_agent_ids
+    ):
+        payload = message_payload(
+            sender="worker@localhost",
+            to=audience_id,
+            text="locality gate",
+            classification=(
+                "tribe-public" if audience_type == "group" else "private"
+            ),
+        )
+        return encrypt_envelope(
+            payload,
+            directory=self.directory,
+            keys=self.worker,
+            audience_type=audience_type,
+            audience_id=audience_id,
+            local_agent_ids=frozenset(local_agent_ids),
+            now_ms=NOW,
         )
 
     def test_directory_signature_key_bundle_and_rollback_are_fail_closed(self):
@@ -172,10 +201,10 @@ class TribeV1IntegrationTests(unittest.TestCase):
         plaintext = decrypt_envelope(
             direct,
             directory=self.directory,
-            keys=self.codex,
+            keys=self.worker,
             now_ms=NOW,
         )
-        self.assertEqual(plaintext["text"], "hola <codex>")
+        self.assertEqual(plaintext["text"], "hola <worker>")
         with self.assertRaises(protocol.ProtocolError):
             decrypt_envelope(
                 direct,
@@ -196,6 +225,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
             keys=self.alice,
             audience_type="group",
             audience_id="public-agents",
+            local_agent_ids=self.local_agent_ids,
             now_ms=NOW,
         )
         mirror_payload = decrypt_envelope(
@@ -228,6 +258,90 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 }
             )
 
+    def test_localhost_sender_never_wraps_or_delivers_to_remote_members(self):
+        with self.assertRaisesRegex(
+            LocalityPolicyError, "remote or mixed audience"
+        ):
+            self.worker_envelope(
+                "direct",
+                "alice",
+                local_agent_ids={"worker@localhost", "mirror"},
+            )
+        with self.assertRaisesRegex(
+            LocalityPolicyError, "remote or mixed audience"
+        ):
+            self.worker_envelope(
+                "group",
+                "public-agents",
+                local_agent_ids={"worker@localhost"},
+            )
+
+        local = self.worker_envelope(
+            "direct",
+            "alice",
+            local_agent_ids={"worker@localhost", "alice"},
+        )
+        local_wrapper = wrap_request(
+            local,
+            keys=self.worker,
+            method="POST",
+            path="/v1/messages",
+            now_ms=NOW,
+        )
+        status, _receipt = self.service(
+            "local-boundary",
+            local_agent_ids={"worker@localhost", "alice"},
+        ).post("/v1/messages", local_wrapper)
+        self.assertEqual(status, 201)
+
+        escaped = self.worker_envelope(
+            "direct",
+            "alice",
+            local_agent_ids=self.local_agent_ids,
+        )
+        escaped_wrapper = wrap_request(
+            escaped,
+            keys=self.worker,
+            method="POST",
+            path="/v1/messages",
+            now_ms=NOW,
+        )
+        with self.assertRaises(LocalityPolicyError):
+            self.service(
+                "remote-boundary", local_agent_ids={"alice", "mirror"}
+            ).post("/v1/messages", escaped_wrapper)
+
+        escaped_outbox = SQLiteBroker(self.root / "escaped-outbox.sqlite")
+        escaped_outbox.stage_outbox(escaped, now_ms=NOW)
+        flush_result = flush_outbox(
+            escaped_outbox,
+            {"alice": {"direct": "http://127.0.0.1:1"}},
+            keys=self.worker,
+            local_agent_ids=frozenset({"worker@localhost"}),
+            now_ms=NOW,
+        )
+        self.assertEqual(len(flush_result["dead_letter"]), 1)
+        self.assertEqual(flush_result["sent"], [])
+        self.assertEqual(flush_result["pending"], [])
+
+        mixed = self.worker_envelope(
+            "group",
+            "public-agents",
+            local_agent_ids=self.local_agent_ids,
+        )
+        mixed_wrapper = wrap_request(
+            mixed,
+            keys=self.worker,
+            method="POST",
+            path="/v1/messages",
+            now_ms=NOW,
+        )
+        with self.assertRaises(LocalityPolicyError):
+            self.service(
+                "mixed-boundary",
+                local_agent_ids={"worker@localhost", "alice"},
+            ).post("/v1/messages", mixed_wrapper)
+
     def test_service_auth_replay_claim_decrypt_and_ack(self):
         service = self.service("service")
         envelope = self.direct_envelope()
@@ -245,11 +359,11 @@ class TribeV1IntegrationTests(unittest.TestCase):
 
         claim_wrapper = wrap_request(
             {
-                "recipient_id": "codex@localhost",
+                "recipient_id": "worker@localhost",
                 "limit": 3,
                 "lease_ms": 60_000,
             },
-            keys=self.codex,
+            keys=self.worker,
             method="POST",
             path="/v1/claims",
             now_ms=NOW,
@@ -259,16 +373,16 @@ class TribeV1IntegrationTests(unittest.TestCase):
         plaintext = decrypt_envelope(
             claim["envelope"],
             directory=self.directory,
-            keys=self.codex,
+            keys=self.worker,
             now_ms=NOW,
         )
         self.assertEqual(plaintext["from"], "alice")
         ack = make_ack(
-            claim, keys=self.codex, outcome="processed", now_ms=NOW
+            claim, keys=self.worker, outcome="processed", now_ms=NOW
         )
         ack_wrapper = wrap_request(
             ack,
-            keys=self.codex,
+            keys=self.worker,
             method="POST",
             path="/v1/acks",
             now_ms=NOW,
@@ -287,6 +401,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
             envelope,
             ["http://127.0.0.1:1", hub],
             keys=self.alice,
+            local_agent_ids=self.local_agent_ids,
             outbox=outbox,
             now_ms=NOW,
             timeout=2,
@@ -303,8 +418,9 @@ class TribeV1IntegrationTests(unittest.TestCase):
         reopened = SQLiteBroker(path)
         result = flush_outbox(
             reopened,
-            {"codex@localhost": {"hub": hub}},
+            {"worker@localhost": {"hub": hub}},
             keys=self.alice,
+            local_agent_ids=self.local_agent_ids,
             now_ms=NOW,
         )
         self.assertEqual(len(result["sent"]), 1)
@@ -333,14 +449,14 @@ class TribeV1IntegrationTests(unittest.TestCase):
         first = claim_and_process(
             direct,
             directory=self.directory,
-            keys=self.codex,
+            keys=self.worker,
             store=store,
             now_ms=NOW,
         )
         second = claim_and_process(
             hub,
             directory=self.directory,
-            keys=self.codex,
+            keys=self.worker,
             store=store,
             now_ms=NOW,
         )
@@ -396,7 +512,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
             decrypt_envelope(
                 envelope,
                 directory=revoked_directory,
-                keys=self.codex,
+                keys=self.worker,
                 now_ms=NOW + 1,
             )
 

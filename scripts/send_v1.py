@@ -16,6 +16,7 @@ from tribe_broker_v1 import SQLiteBroker
 from tribe_client_v1 import route_endpoints, send_with_fallback
 from tribe_crypto_v1 import KeyBundle, encrypt_envelope, message_payload
 from tribe_directory_v1 import Directory
+from tribe_locality_v1 import parse_local_agent_ids
 
 
 def required(name):
@@ -54,6 +55,9 @@ def main():
         now_ms=now,
     )
     keys = KeyBundle.load(required("TRIBE_V1_KEYS"))
+    local_agent_ids = parse_local_agent_ids(
+        required("TRIBE_V1_LOCAL_AGENT_IDS")
+    )
     audience_type = "group" if args.group else "direct"
     audience_id = args.group or args.to
     if args.classification == "tribe-public" and audience_type != "group":
@@ -71,6 +75,7 @@ def main():
         keys=keys,
         audience_type=audience_type,
         audience_id=audience_id,
+        local_agent_ids=local_agent_ids,
         now_ms=now,
         ttl_ms=args.ttl_seconds * 1000,
     )
@@ -94,6 +99,7 @@ def main():
         envelope,
         endpoints,
         keys=keys,
+        local_agent_ids=local_agent_ids,
         outbox=outbox,
         now_ms=now,
     )

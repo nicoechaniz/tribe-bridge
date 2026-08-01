@@ -21,10 +21,13 @@ The retirement completed at directory epoch 3, hash
 `2c24cdf3165c418959f679945688cd3620939c04325910323b1b9eea450f580e`.
 The hub at `10.10.20.69:8685` and Legion's local broker passed health checks at
 build `91ae8ba53c021863acf268de3cdaa3076a81b323`. The hub onboarding gate
-exercised private delivery and the explicit `public-agents` mirror route. The
-final post-cleanup gate sent message
-`019fba98-c261-7f5f-9e82-954332d65043` from `codex@localhost` through the
-anyVPN hub and was claimed and decrypted by `compaii@daimonmatrix`.
+exercised private delivery and the explicit `public-agents` mirror route.
+
+An additional post-cleanup message from a real `@localhost` principal reached
+the remote hub. That test exposed a missing embodiment boundary rather than a
+valid success criterion. Issue #24 superseded it with three fail-closed gates:
+no remote route, no remote HPKE recipient wrap, and independent broker
+rejection. The event remains in durable stores as incident evidence.
 
 ## Rollback policy
 

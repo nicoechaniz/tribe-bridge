@@ -86,7 +86,7 @@
   ],
   "embodiment": {
     "realm": "local-cli",
-    "body_id": "codex-session",
+    "body_id": "cli-session",
     "surfaces": [
       "terminal",
       "github",
@@ -295,7 +295,7 @@
         }
       ],
       "constraints": [
-        "Codex and CompAII still share one GitHub account",
+        "Multiple agents still share one GitHub account",
         "claims need separate app identities and detached signatures"
       ]
     },

@@ -11,8 +11,8 @@ Commands:
   flush-outbox  Retry durably staged messages
   help          Show this help
 
-Set TRIBE_CLIENT_ENV to select a client identity, or install an explicit host
-default at $HOME/.config/tribe/client.env.
+Set TRIBE_CLIENT_ENV explicitly to select a client identity. The harness owns
+that choice; this command never chooses a default principal.
 EOF
 }
 
@@ -35,7 +35,11 @@ case "$command_name" in
         ;;
 esac
 
-client_env="${TRIBE_CLIENT_ENV:-$HOME/.config/tribe/client.env}"
+client_env="${TRIBE_CLIENT_ENV:-}"
+if [[ -z "$client_env" ]]; then
+    printf 'tribe: TRIBE_CLIENT_ENV is required\n' >&2
+    exit 2
+fi
 if [[ ! -r "$client_env" ]]; then
     printf 'tribe: client environment is not readable: %s\n' "$client_env" >&2
     exit 2
