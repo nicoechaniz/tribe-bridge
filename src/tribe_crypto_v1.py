@@ -212,7 +212,7 @@ def encrypt_envelope(
     local_agent_ids: frozenset[str],
     audience_epoch: int | None = None,
     now_ms: int | None = None,
-    ttl_ms: int = 60 * 60 * 1000,
+    ttl_ms: int = 48 * 60 * 60 * 1000,
     message_id: str | None = None,
 ) -> dict[str, Any]:
     now = int(time.time() * 1000) if now_ms is None else now_ms
