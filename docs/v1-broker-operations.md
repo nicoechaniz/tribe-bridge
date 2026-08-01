@@ -28,8 +28,13 @@ first causes a fail-closed outage.
 
 Once all participants are compatible, sign and install one chained epoch and
 verify that the direct member and every observer can claim their independent
-delivery. Rollback is a corrective successor epoch; never restore an older
-snapshot over advanced anti-rollback state.
+delivery. Every observer-policy change creates a new active audience epoch;
+the previous epoch becomes `retired` so endpoints can finish already-admitted
+deliveries, but it cannot authorize new encryption or broker admission. Drain
+all sender outboxes before the transition and remove retired epochs only after
+the maximum message TTL and delivery-retention window. Rollback is a corrective
+successor epoch; never restore an older snapshot over advanced anti-rollback
+state.
 
 ## Durability contract
 

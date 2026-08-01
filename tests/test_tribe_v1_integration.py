@@ -353,6 +353,69 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 now_ms=NOW,
             )
 
+    def test_retired_audience_allows_queued_receive_but_not_new_admission(self):
+        old_envelope = self.direct_envelope()
+        broker = SQLiteBroker(self.root / "transition.sqlite")
+        broker.enqueue(
+            old_envelope,
+            self.directory.context(sender_id="alice", now_ms=NOW),
+            received_at_ms=NOW,
+        )
+
+        snapshot = copy.deepcopy(self.material["snapshot"])
+        old_audience = snapshot["audiences"][0]
+        old_audience["status"] = "retired"
+        new_audience = copy.deepcopy(old_audience)
+        new_audience.update(
+            {"epoch": 2, "status": "active", "observers": ["mirror"]}
+        )
+        snapshot["audiences"].append(new_audience)
+        transitioned = self.directory_from_snapshot(snapshot, "transitioned")
+
+        claim = broker.claim("worker@localhost", now_ms=NOW)[0]
+        self.assertEqual(
+            decrypt_envelope(
+                claim["envelope"],
+                directory=transitioned,
+                keys=self.worker,
+                now_ms=NOW,
+            )["text"],
+            "hola <worker>",
+        )
+        with self.assertRaises(protocol.ProtocolError):
+            decrypt_envelope(
+                old_envelope,
+                directory=transitioned,
+                keys=self.mirror,
+                now_ms=NOW,
+            )
+        with self.assertRaisesRegex(
+            protocol.ProtocolError, "unauthorized_audience"
+        ):
+            protocol.validate_broker_admission(
+                old_envelope,
+                transitioned.context(sender_id="alice", now_ms=NOW),
+            )
+
+        new_envelope = encrypt_envelope(
+            message_payload(
+                sender="alice",
+                to="worker@localhost",
+                text="new observed epoch",
+            ),
+            directory=transitioned,
+            keys=self.alice,
+            audience_type="direct",
+            audience_id="worker@localhost",
+            local_agent_ids=self.local_agent_ids,
+            now_ms=NOW,
+        )
+        self.assertEqual(new_envelope["audience"]["epoch"], 2)
+        self.assertEqual(
+            {recipient["id"] for recipient in new_envelope["recipients"]},
+            {"worker@localhost", "mirror"},
+        )
+
     def test_real_crypto_group_and_mirror_policy(self):
         public_payload = message_payload(
             sender="alice",

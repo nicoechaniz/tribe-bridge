@@ -155,6 +155,13 @@ The endpoint MUST independently verify its audience membership or signed
 observer status and require exactly one wrap to an active encryption key it
 owns. An audience name alone never grants access.
 
+An active audience epoch may authorize new sender encryption and broker
+admission. A retained `retired` audience epoch MUST NOT authorize either, but
+an endpoint MAY use its signed recipients and keys to validate and decrypt an
+envelope admitted while that epoch was active. `revoked` epochs remain invalid
+for both admission and receive. Recipient-policy changes, including observer
+changes, MUST use a new audience epoch rather than mutate an existing one.
+
 ## 6. Identity directory and authorization
 
 Every component starts from one or more governance Ed25519 public keys pinned

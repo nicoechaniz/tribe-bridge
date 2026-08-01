@@ -74,6 +74,12 @@ obtained. Compromise of an observer or its encryption key has the same
 confidentiality consequences as compromise of a recipient key for envelopes
 wrapped to it.
 
+Observer rollout creates a new audience epoch. The prior epoch may remain
+`retired` only so its already-admitted deliveries can be validated by their
+original recipients; it cannot authorize new encryption or broker admission.
+Pending sender outboxes must be drained before the transition. The old epoch
+is removed after the maximum envelope TTL and delivery-retention window.
+
 ### Compromised sender key
 
 An attacker can forge messages until the signing key is marked compromised.
