@@ -539,17 +539,20 @@ class Directory:
         receiver_audiences = []
         audience_members = {}
         for audience in self.audiences.values():
-            if audience["status"] != "active":
+            status = audience["status"]
+            if status not in {"active", "retired"}:
                 continue
             key = (
                 f'{audience["type"]}:{audience["id"]}:'
                 f'{audience["epoch"]}'
             )
             recipients = audience_recipients(audience)
-            audience_members[key] = recipients
-            if sender_id in audience["allowed_senders"]:
-                authorized.append(key)
+            if status == "active":
+                audience_members[key] = recipients
+                if sender_id in audience["allowed_senders"]:
+                    authorized.append(key)
             if receiver_id in recipients:
+                audience_members[key] = recipients
                 receiver_audiences.append(key)
         return {
             "now_ms": now_ms,
