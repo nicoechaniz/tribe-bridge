@@ -25,6 +25,7 @@ from tribe_client_v1 import (
 )
 from tribe_crypto_v1 import (
     KeyBundle,
+    b64url,
     decrypt_envelope,
     encrypt_envelope,
     message_payload,
@@ -152,6 +153,17 @@ class TribeV1IntegrationTests(unittest.TestCase):
             now_ms=NOW,
         )
 
+    def directory_from_snapshot(self, snapshot, name):
+        signed = resign_directory(snapshot, signing_key(1))
+        path = self.root / f"{name}-directory.json"
+        path.write_text(json.dumps(signed))
+        return Directory.load(
+            path,
+            self.material["roots_path"],
+            self.root / f"{name}-state.json",
+            now_ms=NOW,
+        )
+
     def test_directory_signature_key_bundle_and_rollback_are_fail_closed(self):
         self.alice.verify_against(self.directory, NOW)
         state = json.loads(self.material["state_path"].read_text())
@@ -196,7 +208,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 now_ms=NOW,
             )
 
-    def test_real_crypto_direct_group_and_mirror_policy(self):
+    def test_real_crypto_direct_policy(self):
         direct = self.direct_envelope()
         plaintext = decrypt_envelope(
             direct,
@@ -213,6 +225,135 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 now_ms=NOW,
             )
 
+    def test_direct_observer_receives_wrap_delivery_without_sender_authority(self):
+        snapshot = copy.deepcopy(self.material["snapshot"])
+        snapshot["audiences"][0]["observers"] = ["mirror"]
+        observed = self.directory_from_snapshot(snapshot, "observed")
+
+        envelope = encrypt_envelope(
+            message_payload(
+                sender="alice",
+                to="worker@localhost",
+                text="auditable private message",
+            ),
+            directory=observed,
+            keys=self.alice,
+            audience_type="direct",
+            audience_id="worker@localhost",
+            local_agent_ids=self.local_agent_ids,
+            now_ms=NOW,
+        )
+        self.assertEqual(
+            {recipient["id"] for recipient in envelope["recipients"]},
+            {"worker@localhost", "mirror"},
+        )
+        for keys in (self.worker, self.mirror):
+            self.assertEqual(
+                decrypt_envelope(
+                    envelope,
+                    directory=observed,
+                    keys=keys,
+                    now_ms=NOW,
+                )["text"],
+                "auditable private message",
+            )
+
+        broker = SQLiteBroker(self.root / "observed.sqlite")
+        broker.enqueue(
+            envelope,
+            observed.context(sender_id="alice", now_ms=NOW),
+            received_at_ms=NOW,
+        )
+        self.assertEqual(
+            len(broker.claim("worker@localhost", now_ms=NOW)), 1
+        )
+        self.assertEqual(len(broker.claim("mirror", now_ms=NOW)), 1)
+
+        with self.assertRaisesRegex(
+            DirectoryError, "sender is not authorized"
+        ):
+            encrypt_envelope(
+                message_payload(
+                    sender="mirror",
+                    to="worker@localhost",
+                    text="observer cannot publish",
+                ),
+                directory=observed,
+                keys=self.mirror,
+                audience_type="direct",
+                audience_id="worker@localhost",
+                local_agent_ids=self.local_agent_ids,
+                now_ms=NOW,
+            )
+
+        missing_observer = copy.deepcopy(envelope)
+        missing_observer["recipients"] = [
+            recipient
+            for recipient in missing_observer["recipients"]
+            if recipient["id"] != "mirror"
+        ]
+        missing_observer["signature"]["value"] = b64url(
+            self.material["agents"]["alice"]["signing"].sign(
+                protocol.signature_preimage(missing_observer)
+            )
+        )
+        with self.assertRaisesRegex(
+            protocol.ProtocolError, "invalid_recipient_set"
+        ):
+            protocol.validate_broker_admission(
+                missing_observer,
+                observed.context(sender_id="alice", now_ms=NOW),
+            )
+
+        with self.assertRaisesRegex(
+            protocol.ProtocolError, "invalid_recipient_set"
+        ):
+            protocol.validate_broker_admission(
+                envelope,
+                self.directory.context(sender_id="alice", now_ms=NOW),
+            )
+
+    def test_direct_observers_are_strict_and_part_of_locality_boundary(self):
+        invalid_cases = (
+            (2, ["alice"], "only valid for direct"),
+            (0, [], "invalid audience observers"),
+            (0, ["mirror", "mirror"], "duplicate audience observers"),
+            (0, ["worker@localhost"], "must not be members"),
+            (0, ["unknown"], "unknown agent"),
+            (1, ["worker@localhost"], "must not be allowed senders"),
+        )
+        for index, (audience_index, observers, error) in enumerate(
+            invalid_cases
+        ):
+            with self.subTest(observers=observers, error=error):
+                snapshot = copy.deepcopy(self.material["snapshot"])
+                snapshot["audiences"][audience_index]["observers"] = observers
+                with self.assertRaisesRegex(DirectoryError, error):
+                    self.directory_from_snapshot(snapshot, f"invalid-{index}")
+
+        snapshot = copy.deepcopy(self.material["snapshot"])
+        snapshot["audiences"][1]["observers"] = ["mirror"]
+        observed = self.directory_from_snapshot(snapshot, "local-observer")
+        with self.assertRaisesRegex(
+            LocalityPolicyError, "remote or mixed audience"
+        ):
+            encrypt_envelope(
+                message_payload(
+                    sender="worker@localhost",
+                    to="alice",
+                    text="must remain local",
+                ),
+                directory=observed,
+                keys=self.worker,
+                audience_type="direct",
+                audience_id="alice",
+                local_agent_ids=frozenset(
+                    {"worker@localhost", "alice"}
+                ),
+                now_ms=NOW,
+            )
+
+    def test_real_crypto_group_and_mirror_policy(self):
         public_payload = message_payload(
             sender="alice",
             to="public-agents",

@@ -18,6 +18,19 @@ not override the governance-signed directory, audience epoch, or allowed
 senders. Harnesses must inject `TRIBE_CLIENT_ENV`; the operator command has no
 default identity.
 
+## Protocol-aware directory rollout
+
+Directory changes that introduce direct `observers` are code-first. Deploy a
+build that accepts the optional field to every broker and active client, then
+verify each client against the unsigned candidate before signing or installing
+it. Older builds reject the closed audience shape, so advancing the directory
+first causes a fail-closed outage.
+
+Once all participants are compatible, sign and install one chained epoch and
+verify that the direct member and every observer can claim their independent
+delivery. Rollback is a corrective successor epoch; never restore an older
+snapshot over advanced anti-rollback state.
+
 ## Durability contract
 
 - `BrokerBackend` is the backend-neutral interface: atomic `enqueue`, `claim`,

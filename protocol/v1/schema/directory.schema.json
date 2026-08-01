@@ -50,6 +50,12 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {"required": ["observers"]},
+            "then": {"properties": {"type": {"const": "direct"}}}
+          }
+        ],
         "required": [
           "type",
           "id",
@@ -67,6 +73,13 @@
             "type": "array",
             "minItems": 1,
             "maxItems": 256,
+            "items": {"$ref": "#/$defs/identifier"}
+          },
+          "observers": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 255,
+            "uniqueItems": true,
             "items": {"$ref": "#/$defs/identifier"}
           },
           "allowed_senders": {

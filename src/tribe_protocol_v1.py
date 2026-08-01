@@ -299,7 +299,10 @@ def validate_structure(envelope: Any) -> dict[str, Any]:
         _decode_b64url(recipient["enc"], 32)
         # HPKE seals a 32-byte CEK; the selected AEAD adds a 16-byte tag.
         _decode_b64url(recipient["wrapped_cek"], 48)
-    if audience["type"] == "direct" and seen_recipients != {audience["id"]}:
+    if (
+        audience["type"] == "direct"
+        and audience["id"] not in seen_recipients
+    ):
         raise ProtocolError("invalid_recipient_set")
 
     signature = _reject_if_not_exact_fields(
