@@ -362,10 +362,31 @@ class TribeV1IntegrationTests(unittest.TestCase):
             received_at_ms=NOW,
         )
 
-        snapshot = copy.deepcopy(self.material["snapshot"])
+        observed_snapshot = copy.deepcopy(self.material["snapshot"])
+        observed_snapshot["audiences"][0]["observers"] = ["mirror"]
+        observed_directory = self.directory_from_snapshot(
+            observed_snapshot, "same-epoch-observed"
+        )
+        observed_envelope = encrypt_envelope(
+            message_payload(
+                sender="alice",
+                to="worker@localhost",
+                text="observed before corrective epoch",
+            ),
+            directory=observed_directory,
+            keys=self.alice,
+            audience_type="direct",
+            audience_id="worker@localhost",
+            local_agent_ids=self.local_agent_ids,
+            now_ms=NOW,
+        )
+
+        snapshot = copy.deepcopy(observed_snapshot)
         old_audience = snapshot["audiences"][0]
         old_audience["status"] = "retired"
+        old_audience["legacy_unobserved_receive"] = True
         new_audience = copy.deepcopy(old_audience)
+        new_audience.pop("legacy_unobserved_receive")
         new_audience.update(
             {"epoch": 2, "status": "active", "observers": ["mirror"]}
         )
@@ -389,11 +410,28 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 keys=self.mirror,
                 now_ms=NOW,
             )
+        for keys in (self.worker, self.mirror):
+            self.assertEqual(
+                decrypt_envelope(
+                    observed_envelope,
+                    directory=transitioned,
+                    keys=keys,
+                    now_ms=NOW,
+                )["text"],
+                "observed before corrective epoch",
+            )
         with self.assertRaisesRegex(
             protocol.ProtocolError, "unauthorized_audience"
         ):
             protocol.validate_broker_admission(
                 old_envelope,
+                transitioned.context(sender_id="alice", now_ms=NOW),
+            )
+        with self.assertRaisesRegex(
+            protocol.ProtocolError, "unauthorized_audience"
+        ):
+            protocol.validate_broker_admission(
+                observed_envelope,
                 transitioned.context(sender_id="alice", now_ms=NOW),
             )
 
@@ -415,6 +453,50 @@ class TribeV1IntegrationTests(unittest.TestCase):
             {recipient["id"] for recipient in new_envelope["recipients"]},
             {"worker@localhost", "mirror"},
         )
+
+    def test_legacy_unobserved_receive_is_strictly_retired_and_observed(self):
+        invalid = []
+
+        active = copy.deepcopy(self.material["snapshot"])
+        active["audiences"][0].update(
+            {"observers": ["mirror"], "legacy_unobserved_receive": True}
+        )
+        invalid.append(active)
+
+        unobserved = copy.deepcopy(self.material["snapshot"])
+        unobserved["audiences"][0].update(
+            {"status": "retired", "legacy_unobserved_receive": True}
+        )
+        invalid.append(unobserved)
+
+        false_flag = copy.deepcopy(self.material["snapshot"])
+        false_flag["audiences"][0].update(
+            {
+                "status": "retired",
+                "observers": ["mirror"],
+                "legacy_unobserved_receive": False,
+            }
+        )
+        invalid.append(false_flag)
+
+        revoked = copy.deepcopy(self.material["snapshot"])
+        revoked["audiences"][0].update(
+            {
+                "status": "revoked",
+                "observers": ["mirror"],
+                "legacy_unobserved_receive": True,
+            }
+        )
+        invalid.append(revoked)
+
+        for index, snapshot in enumerate(invalid):
+            with self.subTest(index=index):
+                with self.assertRaisesRegex(
+                    DirectoryError, "requires a retired observed direct"
+                ):
+                    self.directory_from_snapshot(
+                        snapshot, f"invalid-legacy-{index}"
+                    )
 
     def test_real_crypto_group_and_mirror_policy(self):
         public_payload = message_payload(
