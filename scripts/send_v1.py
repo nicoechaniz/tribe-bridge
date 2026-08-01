@@ -17,6 +17,7 @@ from tribe_client_v1 import route_endpoints, send_with_fallback
 from tribe_crypto_v1 import KeyBundle, encrypt_envelope, message_payload
 from tribe_directory_v1 import Directory
 from tribe_locality_v1 import parse_local_agent_ids
+from tribe_protocol_v1 import MAX_TTL_MS
 
 
 def required(name):
@@ -40,7 +41,7 @@ def main():
         default="private",
     )
     parser.add_argument("--reply-to")
-    parser.add_argument("--ttl-seconds", type=int, default=3600)
+    parser.add_argument("--ttl-seconds", type=int, default=MAX_TTL_MS // 1000)
     parser.add_argument("--endpoint", action="append")
     args = parser.parse_args()
     text = sys.stdin.read(200_001) if args.text_stdin else args.text
