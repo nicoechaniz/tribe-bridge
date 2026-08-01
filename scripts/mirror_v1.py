@@ -116,10 +116,16 @@ def main():
                             keys=keys,
                             now_ms=now,
                         )
-                        rendered = policy.render(
+                        # Long payloads are chunked so no Telegram message
+                        # exceeds the 4096-char API limit (issue #44). If a
+                        # later part fails, the claim is released and the
+                        # whole message is re-sent on retry — earlier parts
+                        # may appear duplicated in Telegram in that rare
+                        # transient-failure case.
+                        for part in policy.render_parts(
                             payload, claim["envelope"]
-                        )
-                        telegram.send_rendered(rendered)
+                        ):
+                            telegram.send_rendered(part)
                         store.finish(
                             sender,
                             message_id,

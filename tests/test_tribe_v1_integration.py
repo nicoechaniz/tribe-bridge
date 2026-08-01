@@ -1,4 +1,5 @@
 import copy
+import html
 import json
 import subprocess
 import sys
@@ -35,7 +36,11 @@ from tribe_directory_v1 import (
     DirectoryError,
     directory_sha256,
 )
-from tribe_mirror_v1 import MirrorPolicyError, TelegramPolicy
+from tribe_mirror_v1 import (
+    TELEGRAM_MESSAGE_LIMIT,
+    MirrorPolicyError,
+    TelegramPolicy,
+)
 from tribe_locality_v1 import LocalityPolicyError
 from tribe_service_v1 import (
     BoundedThreadingHTTPServer,
@@ -610,6 +615,66 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 user_ids=[7],
                 audiences=["worker@localhost"],
             ).render(public_direct, direct)
+
+    def test_mirror_render_parts_chunks_long_messages(self):
+        policy = TelegramPolicy.from_values(
+            chat_ids=[-1001],
+            user_ids=[7],
+            audiences=["worker@localhost"],
+            audience_types=["direct"],
+            classifications=["tribe-public", "private"],
+        )
+        envelope = {
+            "audience": {"type": "direct", "id": "worker@localhost"},
+            "sender": {"id": "alice"},
+            "message_id": "019f0000-0000-7000-8000-000000000044",
+        }
+
+        def make_payload(text):
+            return message_payload(
+                sender="alice",
+                to="worker@localhost",
+                text=text,
+                classification="private",
+            )
+
+        # Short messages keep the exact single-message rendering.
+        short = make_payload("coordination note")
+        parts = policy.render_parts(short, envelope)
+        self.assertEqual(len(parts), 1)
+        self.assertEqual(parts[0], policy.render(short, envelope))
+        self.assertNotIn("part 1/", parts[0])
+
+        # Long messages are chunked under the Telegram limit, with part
+        # markers, and reconstruct the original payload text exactly.
+        long_text = "línea con <etiquetas> & ampersand\n" * 500
+        parts = policy.render_parts(make_payload(long_text), envelope)
+        self.assertGreater(len(parts), 1)
+        rebuilt = []
+        for index, part in enumerate(parts, 1):
+            self.assertLessEqual(len(part), TELEGRAM_MESSAGE_LIMIT)
+            header, body = part.split("\n", 1)
+            self.assertIn(f"part {index}/{len(parts)}", header)
+            self.assertIn(envelope["message_id"], header)
+            rebuilt.append(html.unescape(body))
+        self.assertEqual("".join(rebuilt), long_text)
+
+        # Entity-heavy text never splits an HTML entity across parts:
+        # every part body unescapes cleanly and concatenates to the source.
+        entity_text = "&<>\"'" * 2000
+        parts = policy.render_parts(make_payload(entity_text), envelope)
+        self.assertGreater(len(parts), 1)
+        rebuilt = []
+        for part in parts:
+            self.assertLessEqual(len(part), TELEGRAM_MESSAGE_LIMIT)
+            _, body = part.split("\n", 1)
+            rebuilt.append(html.unescape(body))
+        self.assertEqual("".join(rebuilt), entity_text)
+
+        # render() fails closed on oversized payloads instead of emitting a
+        # single message Telegram would reject.
+        with self.assertRaises(MirrorPolicyError):
+            policy.render(make_payload(long_text), envelope)
 
     def test_mirror_policy_rejects_malformed_transparency_allowlists(self):
         base = {
