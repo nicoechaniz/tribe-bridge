@@ -6,6 +6,7 @@ import html
 import json
 import urllib.error
 import urllib.request
+from bisect import bisect_right
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,6 +19,15 @@ class MirrorPolicyError(ValueError):
 
 _ALLOWED_AUDIENCE_TYPES = frozenset({"group", "direct"})
 _ALLOWED_CLASSIFICATIONS = frozenset({"tribe-public", "private"})
+
+# Telegram's Bot API rejects sendMessage texts over 4096 characters
+# (https://core.telegram.org/bots/api#sendmessage). Each mirrored part must
+# stay under this limit, so long payloads are chunked (issue #44).
+TELEGRAM_MESSAGE_LIMIT = 4096
+# Conservative escaped-body budget per part: leaves ample headroom for the
+# provenance header and the "part i/n" suffix while keeping every rendered
+# part comfortably below TELEGRAM_MESSAGE_LIMIT.
+_ESCAPED_BODY_BUDGET = 3500
 
 
 @dataclass(frozen=True)
@@ -77,11 +87,9 @@ class TelegramPolicy:
             frozenset(classifications),
         )
 
-    def render(
-        self,
-        payload: dict[str, Any],
-        envelope: dict[str, Any],
-    ) -> str:
+    def _validate_render(
+        self, payload: dict[str, Any], envelope: dict[str, Any]
+    ) -> None:
         audience = envelope["audience"]
         if (
             audience["type"] not in self.allowed_audience_types
@@ -95,14 +103,66 @@ class TelegramPolicy:
             raise MirrorPolicyError(
                 "mirror only emits explicitly allowed tribe messages"
             )
-        provenance = (
+
+    @staticmethod
+    def _provenance(envelope: dict[str, Any]) -> str:
+        audience = envelope["audience"]
+        return (
             f'Tribe v1 · {envelope["sender"]["id"]} → {audience["id"]} · '
             f'{envelope["message_id"]}'
         )
-        return (
-            f"<b>{html.escape(provenance)}</b>\n"
-            f"{html.escape(payload['text'])}"
-        )
+
+    @staticmethod
+    def _chunk_text(text: str) -> list[str]:
+        """Split raw text so every chunk's escaped form fits the budget.
+
+        Chunking happens on the raw text with a running escaped-length
+        prefix, so an HTML entity is never split across parts.
+        """
+        if not text:
+            return [""]
+        prefix = [0]
+        for char in text:
+            prefix.append(prefix[-1] + len(html.escape(char)))
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = (
+                bisect_right(prefix, prefix[start] + _ESCAPED_BODY_BUDGET)
+                - 1
+            )
+            end = max(end, start + 1)  # always make progress
+            chunks.append(text[start:end])
+            start = end
+        return chunks
+
+    def render(
+        self, payload: dict[str, Any], envelope: dict[str, Any]
+    ) -> str:
+        parts = self.render_parts(payload, envelope)
+        if len(parts) != 1:
+            raise MirrorPolicyError(
+                "payload too large for a single Telegram message; "
+                "use render_parts"
+            )
+        return parts[0]
+
+    def render_parts(
+        self, payload: dict[str, Any], envelope: dict[str, Any]
+    ) -> list[str]:
+        """Render as one or more Telegram-safe messages (issue #44)."""
+        self._validate_render(payload, envelope)
+        provenance = self._provenance(envelope)
+        chunks = self._chunk_text(payload["text"])
+        if len(chunks) == 1:
+            header = f"<b>{html.escape(provenance)}</b>\n"
+            return [f"{header}{html.escape(chunks[0])}"]
+        total = len(chunks)
+        return [
+            f"<b>{html.escape(provenance)} · part {index}/{total}</b>\n"
+            f"{html.escape(chunk)}"
+            for index, chunk in enumerate(chunks, 1)
+        ]
 
     def validate_inbound_update(
         self, update: dict[str, Any]
