@@ -58,6 +58,7 @@ def main():
     )
     messages = []
     failures = []
+    succeeded = 0
     for endpoint in endpoints:
         try:
             messages.extend(
@@ -70,12 +71,16 @@ def main():
                     now_ms=now,
                 )
             )
+            succeeded += 1
         except Exception as exc:
             failures.append({"endpoint": endpoint, "error": str(exc)})
+    # Inbox endpoints are redundant views over deduplicated deliveries:
+    # the poll only fails closed when EVERY endpoint is unreachable.
+    ok = succeeded > 0
     print(
         json.dumps(
             {
-                "ok": not failures,
+                "ok": ok,
                 "protocol": "tribe/v1",
                 "build_commit": required("TRIBE_V1_BUILD_COMMIT"),
                 "messages": messages,
@@ -85,7 +90,7 @@ def main():
             ensure_ascii=False,
         )
     )
-    return 0 if not failures else 1
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
