@@ -444,9 +444,19 @@ def validate_endpoint_receive(
         _audience_key(envelope)
     )
     actual_members = {recipient["id"] for recipient in envelope["recipients"]}
-    if not isinstance(expected_members, list) or actual_members != set(
-        expected_members
-    ):
+    expected_sets = context.get("audience_recipient_sets", {}).get(
+        _audience_key(envelope)
+    )
+    if expected_sets is None:
+        expected_sets = [expected_members]
+    valid_recipient_set = isinstance(expected_sets, list) and any(
+        isinstance(expected, list)
+        and bool(expected)
+        and len(expected) == len(set(expected))
+        and actual_members == set(expected)
+        for expected in expected_sets
+    )
+    if not valid_recipient_set:
         raise ProtocolError("invalid_recipient_set")
     wraps = [
         recipient

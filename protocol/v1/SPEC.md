@@ -162,6 +162,15 @@ envelope admitted while that epoch was active. `revoked` epochs remain invalid
 for both admission and receive. Recipient-policy changes, including observer
 changes, MUST use a new audience epoch rather than mutate an existing one.
 
+A governance-signed retired observed direct MAY set
+`legacy_unobserved_receive: true` only to repair a rollout in which the same
+audience epoch was admitted both before and after observers were added. For
+endpoint receive only, that flag permits the exact member-only set in addition
+to the exact member-plus-observers set. It never authorizes encryption or
+broker admission, and an observer still cannot read a member-only envelope
+because it has no CEK wrap. Active, revoked, group, and unobserved audiences
+MUST reject the flag. Remove the valve with the retired epoch after retention.
+
 ## 6. Identity directory and authorization
 
 Every component starts from one or more governance Ed25519 public keys pinned
