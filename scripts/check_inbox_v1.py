@@ -24,10 +24,18 @@ def required(name):
     return value
 
 
+def claim_limit(value):
+    """Parse the broker's bounded claim limit at the CLI boundary."""
+    parsed = int(value)
+    if not 1 <= parsed <= 3:
+        raise argparse.ArgumentTypeError("must be between 1 and 3")
+    return parsed
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--endpoint", action="append")
-    parser.add_argument("--limit", type=int, default=3)
+    parser.add_argument("--limit", type=claim_limit, default=3)
     args = parser.parse_args()
     now = int(time.time() * 1000)
     directory = Directory.load(
