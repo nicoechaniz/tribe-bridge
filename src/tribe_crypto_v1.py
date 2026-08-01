@@ -18,6 +18,7 @@ from cryptography.hazmat.primitives.hpke import AEAD, KDF, KEM, Suite
 
 import tribe_protocol_v1 as protocol
 from tribe_directory_v1 import Directory, DirectoryError, b64url_decode, strict_json
+from tribe_locality_v1 import enforce_localhost_boundary
 
 
 HPKE_SUITE = Suite(KEM.X25519, KDF.HKDF_SHA256, AEAD.CHACHA20_POLY1305)
@@ -202,6 +203,7 @@ def encrypt_envelope(
     keys: KeyBundle,
     audience_type: str,
     audience_id: str,
+    local_agent_ids: frozenset[str],
     audience_epoch: int | None = None,
     now_ms: int | None = None,
     ttl_ms: int = 60 * 60 * 1000,
@@ -213,6 +215,9 @@ def encrypt_envelope(
     keys.verify_against(directory, now)
     audience = directory.audience(
         audience_type, audience_id, audience_epoch
+    )
+    enforce_localhost_boundary(
+        keys.agent_id, audience["members"], local_agent_ids
     )
     if keys.agent_id not in audience["allowed_senders"]:
         raise DirectoryError("sender is not authorized for audience")

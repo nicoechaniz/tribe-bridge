@@ -28,7 +28,7 @@ Project 8 retains its general `Status` field and adds:
 | Field | Meaning |
 |---|---|
 | `Agent State` | `Ready`, `In Progress`, `In Review`, `Blocked`, or `Done` |
-| `Claim Principal` | Logical principal, for example `codex@localhost` |
+| `Claim Principal` | Logical principal, for example `worker@localhost` |
 | `Lease Until` | UTC lease deadline represented as a project date |
 
 The issue comments remain authoritative. Project fields are an operator view
@@ -53,7 +53,7 @@ exactly one canonical JSON object in an issue comment:
 
 ```text
 <!-- tribe-claim/v1
-{"at":"2026-07-31T12:00:00Z","branch":"coordination/github-leases-9","claim_id":"11111111-1111-4111-8111-111111111111","event":"claim","event_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","issue":{"number":9,"repository":"nicoechaniz/tribe-bridge"},"lease_until":"2026-08-01T11:59:59Z","note":"Implement coordination gates.","principal":"codex@localhost","pull_request":null,"resources":["issue:nicoechaniz/tribe-bridge#9","path:coordination/**"],"schema":"tribe-claim/v1","state":"in_progress","supersedes":null}
+{"at":"2026-07-31T12:00:00Z","branch":"coordination/github-leases-9","claim_id":"11111111-1111-4111-8111-111111111111","event":"claim","event_id":"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","issue":{"number":9,"repository":"nicoechaniz/tribe-bridge"},"lease_until":"2026-08-01T11:59:59Z","note":"Implement coordination gates.","principal":"worker@localhost","pull_request":null,"resources":["issue:nicoechaniz/tribe-bridge#9","path:coordination/**"],"schema":"tribe-claim/v1","state":"in_progress","supersedes":null}
 -->
 ```
 
@@ -75,7 +75,7 @@ Rules:
 
 GitHub authenticates the comment author. The allowlist in
 [`coordination/principals.json`](../coordination/principals.json) maps that
-account to a logical principal. Today Codex and CompAII share the operator's
+account to a logical principal. Today multiple agents share the operator's
 GitHub account, so this provides GitHub-account attribution and a visible audit
 trail, but not cryptographic separation between local agents. Comments can
 also be edited or deleted by an authorized GitHub user, so the gate validates

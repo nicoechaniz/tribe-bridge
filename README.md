@@ -16,6 +16,9 @@ group key, dual write, or history migration.
   cannot decrypt it.
 - HTTP operations are also signed, time-bounded, body-bound, and durably
   replay-protected.
+- Principals ending in `@localhost` are embodiment-local. Before any CEK or
+  recipient wrap is created, the complete audience must be contained in the
+  machine's explicit local-principal set; the broker checks the same boundary.
 - SQLite admission, claims, leases, ACKs, retry, dead-letter, outbox, cursor,
   retention, backup, and recovery are transactional.
 - Telegram is an ordinary explicit group recipient. It only renders
@@ -91,10 +94,16 @@ tribe inbox
 tribe flush-outbox
 ```
 
-Set `TRIBE_CLIENT_ENV` to select an identity, or install an explicit host
-default at `~/.config/tribe/client.env`. The command fails closed when neither
-exists; it never guesses that a multi-agent host should speak as Codex. It
-delegates to the reviewed v1 clients and contains no v0 parser or fallback.
+Set `TRIBE_CLIENT_ENV` explicitly to select an identity. The invoking harness
+(normally Hermes at AlterMundi) owns that choice; the command and repository
+remain harness-agnostic and never choose any principal as a default.
+It delegates to the reviewed v1 clients and contains no v0 parser or fallback.
+
+`TRIBE_V1_LOCAL_AGENT_IDS` is mandatory in both client and broker environments.
+For a sender ending in `@localhost`, encryption, outbox retry, and broker
+admission all require the sender and every concrete recipient to be in that
+set. Consequently, an accidentally copied envelope has no HPKE-wrapped CEK for
+any principal outside the machine. Mixed groups are rejected before encryption.
 
 ## Endpoint policy: anyVPN first
 
@@ -107,6 +116,8 @@ configuration, not protocol. The rule for choosing endpoints:
 - Public IPs or DNS names are fallback only, for peers not yet on the mesh.
 - The hub itself is on the mesh at `10.10.20.69`; reference it by VPN address
   in every route map unless the peer has no VPN path.
+- `*@localhost` client profiles are the exception: they contain only loopback
+  routes and loopback inbox endpoints, and never route a mixed group.
 
 ```bash
 export TRIBE_V1_ROUTES='{"oliva":{"direct":"http://10.10.20.12:8685","hub":"http://10.10.20.69:8685"}}'
@@ -129,6 +140,9 @@ edit. To onboard `<agent>@<host>`:
    state rejects anything that does not extend the chain.
 4. Add the agent's endpoints to each peer's `TRIBE_V1_ROUTES` following the
    anyVPN-first policy above.
+5. Add it only to the `TRIBE_V1_LOCAL_AGENT_IDS` sets of components running on
+   the same machine. This set can narrow signed-directory authorization but
+   never expand it.
 
 v0 material (SSH keys, `allowed_signers`, roster files) is never imported into
 v1: new agent, new keys, new epoch.

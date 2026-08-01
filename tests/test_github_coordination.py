@@ -29,7 +29,7 @@ def event(
     kind: str = "claim",
     event_id: str = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     claim_id: str = CLAIM_ID,
-    principal: str = "codex@localhost",
+    principal: str = "worker@localhost",
     state: str = "in_progress",
     at: str = "2026-07-31T12:00:00Z",
     lease_until: str | None = "2026-08-01T11:59:59Z",
@@ -158,7 +158,7 @@ class ReductionAndAuditTests(unittest.TestCase):
             event(
                 kind="renew",
                 event_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-                principal="compaii@localhost",
+                principal="reviewer@localhost",
                 at="2026-07-31T13:00:00Z",
                 lease_until="2026-08-01T12:59:59Z",
             )
@@ -204,7 +204,7 @@ class ReductionAndAuditTests(unittest.TestCase):
             event(
                 event_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                 claim_id="22222222-2222-4222-8222-222222222222",
-                principal="compaii@localhost",
+                principal="reviewer@localhost",
                 branch="coordination/other",
             )
         )
@@ -216,7 +216,7 @@ class ReductionAndAuditTests(unittest.TestCase):
         right_raw = event(
             event_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
             claim_id="22222222-2222-4222-8222-222222222222",
-            principal="compaii@localhost",
+            principal="reviewer@localhost",
             branch="docs/other-10",
             resources=[
                 "issue:nicoechaniz/tribe-bridge#10",
@@ -233,7 +233,7 @@ class ReductionAndAuditTests(unittest.TestCase):
             event(
                 event_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                 claim_id="22222222-2222-4222-8222-222222222222",
-                principal="compaii@localhost",
+                principal="reviewer@localhost",
                 at="2026-07-31T13:00:01Z",
                 lease_until="2026-08-01T13:00:00Z",
                 branch="coordination/reclaimed-9",
@@ -249,7 +249,7 @@ class ReductionAndAuditTests(unittest.TestCase):
             event(
                 event_id="bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
                 claim_id="22222222-2222-4222-8222-222222222222",
-                principal="compaii@localhost",
+                principal="reviewer@localhost",
                 at="2026-07-31T13:00:01Z",
                 lease_until="2026-08-01T13:00:00Z",
                 branch="coordination/reclaimed-9",
@@ -289,7 +289,7 @@ class ReductionAndAuditTests(unittest.TestCase):
         registry = {
             "schema": "tribe-principals/v1",
             "principals": {
-                "codex@localhost": {
+                "worker@localhost": {
                     "enabled": True,
                     "github_logins": ["somebody-else"],
                 }

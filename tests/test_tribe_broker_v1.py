@@ -153,7 +153,7 @@ class SQLiteBrokerTests(unittest.TestCase):
                 barrier.wait()
                 results.extend(
                     self.broker.claim(
-                        "codex@localhost",
+                        "worker@localhost",
                         limit=1,
                         lease_ms=1_000,
                         now_ms=self.now,
@@ -175,19 +175,19 @@ class SQLiteBrokerTests(unittest.TestCase):
     def test_signed_ack_is_durable_idempotent_and_cursor_is_monotonic(self):
         self.enqueue()
         claim = self.broker.claim(
-            "codex@localhost", lease_ms=1_000, now_ms=self.now
+            "worker@localhost", lease_ms=1_000, now_ms=self.now
         )[0]
         with self.assertRaises(broker_module.CursorConflict):
             self.broker.advance_cursor(
-                "codex@localhost", "worker-1", claim["cursor"]
+                "worker@localhost", "worker-1", claim["cursor"]
             )
         receiver_key = Ed25519PrivateKey.generate()
         kid = add_receiver_key(
-            self.context, "codex@localhost", receiver_key
+            self.context, "worker@localhost", receiver_key
         )
         ack = make_ack(
             claim,
-            "codex@localhost",
+            "worker@localhost",
             kid,
             receiver_key,
             self.now,
@@ -203,19 +203,19 @@ class SQLiteBrokerTests(unittest.TestCase):
         )
         self.assertEqual(
             self.broker.claim(
-                "codex@localhost", now_ms=self.now
+                "worker@localhost", now_ms=self.now
             ),
             [],
         )
 
         self.broker.advance_cursor(
-            "codex@localhost", "worker-1", claim["cursor"]
+            "worker@localhost", "worker-1", claim["cursor"]
         )
         reopened = broker_module.SQLiteBroker(
             self.root / "broker.sqlite", clock_ms=self.clock
         )
         self.assertEqual(
-            reopened.get_cursor("codex@localhost", "worker-1"),
+            reopened.get_cursor("worker@localhost", "worker-1"),
             claim["cursor"],
         )
         self.assertEqual(
@@ -223,7 +223,7 @@ class SQLiteBrokerTests(unittest.TestCase):
         )
         with self.assertRaises(broker_module.CursorConflict):
             reopened.advance_cursor(
-                "codex@localhost", "worker-1", 0
+                "worker@localhost", "worker-1", 0
             )
 
     def test_retry_backoff_and_max_attempts_end_in_dead_letter(self):
@@ -239,15 +239,15 @@ class SQLiteBrokerTests(unittest.TestCase):
         )
         receiver_key = Ed25519PrivateKey.generate()
         kid = add_receiver_key(
-            self.context, "codex@localhost", receiver_key
+            self.context, "worker@localhost", receiver_key
         )
 
         first = broker.claim(
-            "codex@localhost", lease_ms=1_000, now_ms=self.now
+            "worker@localhost", lease_ms=1_000, now_ms=self.now
         )[0]
         retry_ack = make_ack(
             first,
-            "codex@localhost",
+            "worker@localhost",
             kid,
             receiver_key,
             self.now,
@@ -259,18 +259,18 @@ class SQLiteBrokerTests(unittest.TestCase):
         self.assertEqual(result["state"], "queued")
         self.assertEqual(
             broker.claim(
-                "codex@localhost", now_ms=self.now + 99
+                "worker@localhost", now_ms=self.now + 99
             ),
             [],
         )
         second = broker.claim(
-            "codex@localhost",
+            "worker@localhost",
             lease_ms=1_000,
             now_ms=self.now + 100,
         )[0]
         final_retry = make_ack(
             second,
-            "codex@localhost",
+            "worker@localhost",
             kid,
             receiver_key,
             self.now + 100,
@@ -286,13 +286,13 @@ class SQLiteBrokerTests(unittest.TestCase):
         self.broker.enqueue(
             envelope, context, received_at_ms=self.now
         )
-        codex = self.broker.claim(
-            "codex@localhost", now_ms=self.now
+        worker = self.broker.claim(
+            "worker@localhost", now_ms=self.now
         )
-        oliva = self.broker.claim("oliva", now_ms=self.now)
-        self.assertEqual(len(codex), 1)
-        self.assertEqual(len(oliva), 1)
-        self.assertEqual(codex[0]["message_id"], oliva[0]["message_id"])
+        peer = self.broker.claim("peer", now_ms=self.now)
+        self.assertEqual(len(worker), 1)
+        self.assertEqual(len(peer), 1)
+        self.assertEqual(worker[0]["message_id"], peer[0]["message_id"])
 
     def test_outbox_survives_retry_and_restart(self):
         staged = self.broker.stage_outbox(
@@ -346,15 +346,15 @@ class SQLiteBrokerTests(unittest.TestCase):
     def test_retention_starts_when_delivery_becomes_terminal(self):
         self.enqueue()
         claim = self.broker.claim(
-            "codex@localhost", lease_ms=1_000, now_ms=self.now
+            "worker@localhost", lease_ms=1_000, now_ms=self.now
         )[0]
         receiver_key = Ed25519PrivateKey.generate()
         kid = add_receiver_key(
-            self.context, "codex@localhost", receiver_key
+            self.context, "worker@localhost", receiver_key
         )
         ack = make_ack(
             claim,
-            "codex@localhost",
+            "worker@localhost",
             kid,
             receiver_key,
             self.now,

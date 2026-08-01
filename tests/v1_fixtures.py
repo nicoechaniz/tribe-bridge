@@ -40,7 +40,7 @@ def make_material(root: Path):
     governance_private = signing_key(1)
     agents = {}
     for index, agent_id in enumerate(
-        ("alice", "codex@localhost", "mirror"), start=2
+        ("alice", "worker@localhost", "mirror"), start=2
     ):
         signing = signing_key(index)
         encryption = encryption_key(index + 20)
@@ -81,10 +81,10 @@ def make_material(root: Path):
         "audiences": [
             {
                 "type": "direct",
-                "id": "codex@localhost",
+                "id": "worker@localhost",
                 "epoch": 1,
                 "status": "active",
-                "members": ["codex@localhost"],
+                "members": ["worker@localhost"],
                 "allowed_senders": ["alice"],
             },
             {
@@ -93,15 +93,15 @@ def make_material(root: Path):
                 "epoch": 1,
                 "status": "active",
                 "members": ["alice"],
-                "allowed_senders": ["codex@localhost"],
+                "allowed_senders": ["worker@localhost"],
             },
             {
                 "type": "group",
                 "id": "public-agents",
                 "epoch": 1,
                 "status": "active",
-                "members": ["codex@localhost", "mirror"],
-                "allowed_senders": ["alice", "codex@localhost"],
+                "members": ["worker@localhost", "mirror"],
+                "allowed_senders": ["alice", "worker@localhost"],
             },
         ],
         "governance": {"threshold": 1, "signatures": []},

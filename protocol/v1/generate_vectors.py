@@ -32,17 +32,17 @@ EXPIRES = ISSUED + 3_600_000
 PRIVATE_SEED = bytes(range(1, 33))
 PRIVATE_KEY = Ed25519PrivateKey.from_private_bytes(PRIVATE_SEED)
 RECIPIENT_PRIVATE_KEYS = {
-    "codex@localhost": x25519.X25519PrivateKey.from_private_bytes(
+    "worker@localhost": x25519.X25519PrivateKey.from_private_bytes(
         bytes(range(33, 65))
     ),
-    "oliva": x25519.X25519PrivateKey.from_private_bytes(bytes(range(65, 97))),
+    "peer": x25519.X25519PrivateKey.from_private_bytes(bytes(range(65, 97))),
 }
 DIRECT_CEK = sha256(b"tribe-v1-test-direct-cek").digest()
 GROUP_CEK = sha256(b"tribe-v1-test-group-cek").digest()
 DIRECT_NONCE = bytes(range(12))
 GROUP_NONCE = bytes(range(12, 24))
 DIRECT_PLAINTEXT = b'{"kind":"message","text":"hola v1"}'
-GROUP_PLAINTEXT = b'{"kind":"message","text":"hola daimons v1"}'
+GROUP_PLAINTEXT = b'{"kind":"message","text":"hola test-group v1"}'
 HPKE_SUITE = Suite(KEM.X25519, KDF.HKDF_SHA256, AEAD.CHACHA20_POLY1305)
 
 
@@ -74,12 +74,12 @@ def unsigned_base(
         "issued_at_ms": ISSUED,
         "expires_at_ms": EXPIRES,
         "sender": {
-            "id": "compaii",
-            "signing_kid": "compaii/sig/7",
+            "id": "sender",
+            "signing_kid": "sender/sig/7",
         },
         "audience": {
             "type": "direct",
-            "id": "codex@localhost",
+            "id": "worker@localhost",
             "epoch": 4,
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -90,8 +90,8 @@ def unsigned_base(
         },
         "recipients": [
             {
-                "id": "codex@localhost",
-                "encryption_kid": "codex@localhost/enc/4",
+                "id": "worker@localhost",
+                "encryption_kid": "worker@localhost/enc/4",
                 "enc": "",
                 "wrapped_cek": "",
             }
@@ -136,16 +136,16 @@ def sign(unsigned: dict) -> dict:
 def base_context(public_key: str) -> dict:
     return {
         "now_ms": ISSUED + 60_000,
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
-        "authorized_audiences": ["direct:codex@localhost:4"],
-        "receiver_audiences": ["direct:codex@localhost:4"],
+        "authorized_audiences": ["direct:worker@localhost:4"],
+        "receiver_audiences": ["direct:worker@localhost:4"],
         "audience_members": {
-            "direct:codex@localhost:4": ["codex@localhost"]
+            "direct:worker@localhost:4": ["worker@localhost"]
         },
         "signing_keys": {
-            "compaii/sig/7": {
-                "owner": "compaii",
+            "sender/sig/7": {
+                "owner": "sender",
                 "status": "active",
                 "not_before_ms": ISSUED - 86_400_000,
                 "not_after_ms": EXPIRES + 86_400_000,
@@ -153,8 +153,8 @@ def base_context(public_key: str) -> dict:
             }
         },
         "encryption_keys": {
-            "codex@localhost/enc/4": {
-                "owner": "codex@localhost",
+            "worker@localhost/enc/4": {
+                "owner": "worker@localhost",
                 "status": "active",
             }
         },
@@ -184,7 +184,7 @@ def build() -> dict:
     public_key = b64url(PRIVATE_KEY.public_key().public_bytes_raw())
     valid = sign(encrypt(unsigned_base(), DIRECT_PLAINTEXT, DIRECT_CEK))
     context = base_context(public_key)
-    replay_key = f'compaii:{valid["message_id"]}'
+    replay_key = f'sender:{valid["message_id"]}'
 
     group_unsigned = unsigned_base(
         0x223456789ABCDEF0123,
@@ -192,26 +192,26 @@ def build() -> dict:
     )
     group_unsigned["audience"] = {
         "type": "group",
-        "id": "daimons",
+        "id": "test-group",
         "epoch": 9,
     }
     group_unsigned["recipients"].append(
         {
-            "id": "oliva",
-            "encryption_kid": "oliva/enc/3",
+            "id": "peer",
+            "encryption_kid": "peer/enc/3",
             "enc": "",
             "wrapped_cek": "",
         }
     )
     group = sign(encrypt(group_unsigned, GROUP_PLAINTEXT, GROUP_CEK))
     group_context = base_context(public_key)
-    group_context["authorized_audiences"] = ["group:daimons:9"]
-    group_context["receiver_audiences"] = ["group:daimons:9"]
+    group_context["authorized_audiences"] = ["group:test-group:9"]
+    group_context["receiver_audiences"] = ["group:test-group:9"]
     group_context["audience_members"] = {
-        "group:daimons:9": ["codex@localhost", "oliva"]
+        "group:test-group:9": ["worker@localhost", "peer"]
     }
-    group_context["encryption_keys"]["oliva/enc/3"] = {
-        "owner": "oliva",
+    group_context["encryption_keys"]["peer/enc/3"] = {
+        "owner": "peer",
         "status": "active",
     }
     missing_group_member_unsigned = copy.deepcopy(group)
@@ -234,20 +234,20 @@ def build() -> dict:
     downgrade["suite"] = "TB0_AES256GCM_GROUP"
 
     bad_recipients = copy.deepcopy(valid)
-    bad_recipients["recipients"][0]["id"] = "oliva"
+    bad_recipients["recipients"][0]["id"] = "peer"
 
     expired_context = copy.deepcopy(context)
     expired_context["now_ms"] = EXPIRES
 
     revoked_context = copy.deepcopy(context)
-    revoked_context["signing_keys"]["compaii/sig/7"]["status"] = "compromised"
+    revoked_context["signing_keys"]["sender/sig/7"]["status"] = "compromised"
 
     replay_context = copy.deepcopy(context)
     replay_context["seen"] = [replay_key]
 
     wrong_audience_context = copy.deepcopy(context)
-    wrong_audience_context["receiver_id"] = "oliva"
-    wrong_audience_context["receiver_audiences"] = ["direct:oliva:1"]
+    wrong_audience_context["receiver_id"] = "peer"
+    wrong_audience_context["receiver_audiences"] = ["direct:peer:1"]
 
     unauthorized_context = copy.deepcopy(context)
     unauthorized_context["authorized_audiences"] = []

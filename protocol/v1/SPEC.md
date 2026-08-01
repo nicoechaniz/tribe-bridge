@@ -138,6 +138,14 @@ The broker MUST verify that:
 - each `encryption_kid` is active and owned by its recipient;
 - the recipient set exactly matches policy.
 
+An agent ID ending in `@localhost` denotes an embodiment-local principal.
+Every sender and broker deployment MUST have an explicit, non-empty set of
+principals local to that machine. Before generating a CEK, nonce, or HPKE wrap,
+an `@localhost` sender MUST verify that it and every audience member are in the
+local set. Outbox retry and broker admission MUST repeat this check. A remote
+or mixed recipient set MUST fail closed. The local set only narrows directory
+authorization; it MUST NOT grant audience membership or sender authority.
+
 The endpoint MUST independently verify its audience membership and require
 exactly one wrap to an active encryption key it owns. A group name alone never
 grants access.

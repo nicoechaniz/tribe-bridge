@@ -3,30 +3,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -35,7 +35,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -43,26 +43,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -77,35 +77,35 @@
     {
       "context": {
         "audience_members": {
-          "group:daimons:9": [
-            "codex@localhost",
-            "oliva"
+          "group:test-group:9": [
+            "worker@localhost",
+            "peer"
           ]
         },
         "authorized_audiences": [
-          "group:daimons:9"
+          "group:test-group:9"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "peer/enc/3": {
+            "owner": "peer",
             "status": "active"
           },
-          "oliva/enc/3": {
-            "owner": "oliva",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "group:daimons:9"
+          "group:test-group:9"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -114,7 +114,7 @@
       "envelope": {
         "audience": {
           "epoch": 9,
-          "id": "daimons",
+          "id": "test-group",
           "type": "group"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -122,32 +122,32 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-788d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "AyCRhfAK8qeY4pS_A6ePL33TeI9upxa60FKeoi9z7zvxY0JL0mc3PgcyNCVwkt--hBc5nixpxV-B3z4",
+          "ciphertext": "AyCRhfAK8qeY4pS_A6ePL33TeI9upxa60FKeoi9z7yv1eVsJ22Z4PUYwP0efHxsbA0Wi-2zrlhQrcAXUCwc",
           "nonce": "DA0ODxAREhMUFRYX"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "GZ8L_AxmyLk4LobonxsCFWa8q-pPQcIgwUu5-B70H1c",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "MBD3yP5OyL0YXUY1Psh5wbseSefEGai_s756lxPS0MroVUbH7LhRsVWasMzg2Sqn"
+            "enc": "l4yxVSz2pZChaC3e1OVpSmlkcr-TIY3g4coiO71VWXE",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "IjhfGgMAJ_O3_olovX8xX1TCLsYai53WCR6iFCM-yKJzr3Hr8qudF4tSfvzkUjzp"
           },
           {
-            "enc": "Kgg_YZqD-ga9ia02v7PX9m0H42typuublKdQEdbk7BY",
-            "encryption_kid": "oliva/enc/3",
-            "id": "oliva",
-            "wrapped_cek": "hhvJBgqyEJa5OkwaBeRA4iHeST4WHbUzcPc6fiJ7mNNObQ7pilWAxjAO5bOlcugQ"
+            "enc": "weBOg5AFOnQLr5BtlsIcH4iNmZ5vgprWKYt-v_ZjJFg",
+            "encryption_kid": "peer/enc/3",
+            "id": "peer",
+            "wrapped_cek": "QNF7sIoabKGy1BYDoZ5D96JbQhcrU0G310aStJoVwIFkRZZAyvBCbGzEVT6yLWkT"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "Zs1_GCi4cPsOie2lF8W8SF1C9JCdholXxuOVn0Gdi869qGNcCPU5ig1C3I5CYbG_BEYQSqwMZ91feJ-wgTGhBQ"
+          "kid": "sender/sig/7",
+          "value": "dBtqnlk9OqwYxE8gMwn1lInDaRXg36YnEYwzQuItxeZe7Tn6fnJScdhq90Cu_V1LG7DClI_cz51NPFoI92oHDA"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -156,41 +156,41 @@
         "broker": "accept",
         "endpoint": "accept"
       },
-      "expected_plaintext": "{\"kind\":\"message\",\"text\":\"hola daimons v1\"}",
+      "expected_plaintext": "{\"kind\":\"message\",\"text\":\"hola test-group v1\"}",
       "id": "valid-group"
     },
     {
       "context": {
         "audience_members": {
-          "group:daimons:9": [
-            "codex@localhost",
-            "oliva"
+          "group:test-group:9": [
+            "worker@localhost",
+            "peer"
           ]
         },
         "authorized_audiences": [
-          "group:daimons:9"
+          "group:test-group:9"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "peer/enc/3": {
+            "owner": "peer",
             "status": "active"
           },
-          "oliva/enc/3": {
-            "owner": "oliva",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "group:daimons:9"
+          "group:test-group:9"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -199,7 +199,7 @@
       "envelope": {
         "audience": {
           "epoch": 9,
-          "id": "daimons",
+          "id": "test-group",
           "type": "group"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -207,26 +207,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-788d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "AyCRhfAK8qeY4pS_A6ePL33TeI9upxa60FKeoi9z7zvxY0JL0mc3PgcyNCVwkt--hBc5nixpxV-B3z4",
+          "ciphertext": "AyCRhfAK8qeY4pS_A6ePL33TeI9upxa60FKeoi9z7yv1eVsJ22Z4PUYwP0efHxsbA0Wi-2zrlhQrcAXUCwc",
           "nonce": "DA0ODxAREhMUFRYX"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "GZ8L_AxmyLk4LobonxsCFWa8q-pPQcIgwUu5-B70H1c",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "MBD3yP5OyL0YXUY1Psh5wbseSefEGai_s756lxPS0MroVUbH7LhRsVWasMzg2Sqn"
+            "enc": "l4yxVSz2pZChaC3e1OVpSmlkcr-TIY3g4coiO71VWXE",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "IjhfGgMAJ_O3_olovX8xX1TCLsYai53WCR6iFCM-yKJzr3Hr8qudF4tSfvzkUjzp"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "mlt7hWsc0U82SEG-It_dGhLBeWQKuwJOFKJtMjLWETVIATXFp94eZ-QhD8GDdrz4Wqz-ABotMz4VreYgt3EfCA"
+          "kid": "sender/sig/7",
+          "value": "hAR51_s2lQ2QhErm0ByMjLuW6Pq0Pbq4G9FPS6Aa__ITIMc5IOyfF8cqOBWuj4U8AmFZ4xwNjYRd9xEFqUwKDA"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -240,30 +240,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -272,7 +272,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -286,20 +286,20 @@
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -313,30 +313,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:oliva:1"
+          "direct:peer:1"
         ],
-        "receiver_id": "oliva",
+        "receiver_id": "peer",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -345,7 +345,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -353,26 +353,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -386,32 +386,32 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [
-          "compaii:01941f29-7c00-748d-8567-89abcdef0123"
+          "sender:01941f29-7c00-748d-8567-89abcdef0123"
         ],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -420,7 +420,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -428,26 +428,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -461,30 +461,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735693200000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -493,7 +493,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -501,26 +501,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -534,30 +534,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "compromised"
           }
@@ -566,7 +566,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -574,26 +574,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -607,30 +607,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -639,7 +639,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -649,20 +649,20 @@
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -676,30 +676,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -708,7 +708,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -716,26 +716,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 0
@@ -749,30 +749,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -781,7 +781,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -789,26 +789,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB0_AES256GCM_GROUP",
         "version": 1
@@ -822,30 +822,30 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -854,7 +854,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -862,26 +862,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "oliva",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "peer",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -895,28 +895,28 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {
-          "compaii/sig/7": {
+          "sender/sig/7": {
             "not_after_ms": 1735779600000,
             "not_before_ms": 1735603200000,
-            "owner": "compaii",
+            "owner": "sender",
             "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
             "status": "active"
           }
@@ -925,7 +925,7 @@
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -933,26 +933,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -967,31 +967,31 @@
     {
       "context": {
         "audience_members": {
-          "direct:codex@localhost:4": [
-            "codex@localhost"
+          "direct:worker@localhost:4": [
+            "worker@localhost"
           ]
         },
         "authorized_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
         "encryption_keys": {
-          "codex@localhost/enc/4": {
-            "owner": "codex@localhost",
+          "worker@localhost/enc/4": {
+            "owner": "worker@localhost",
             "status": "active"
           }
         },
         "now_ms": 1735689660000,
         "receiver_audiences": [
-          "direct:codex@localhost:4"
+          "direct:worker@localhost:4"
         ],
-        "receiver_id": "codex@localhost",
+        "receiver_id": "worker@localhost",
         "seen": [],
         "signing_keys": {}
       },
       "envelope": {
         "audience": {
           "epoch": 4,
-          "id": "codex@localhost",
+          "id": "worker@localhost",
           "type": "direct"
         },
         "content_type": "application/vnd.tribe.message+json",
@@ -999,26 +999,26 @@
         "issued_at_ms": 1735689600000,
         "message_id": "01941f29-7c00-748d-8567-89abcdef0123",
         "payload": {
-          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngh3L6Zi27JN9ZJxBVp_7rpy",
+          "ciphertext": "V-mwB_xgwaAqUJJv_IROfBEGqknTsPWTSr60VO-nkktMngjppZO3vocECzzVXYcZ0Wo6",
           "nonce": "AAECAwQFBgcICQoL"
         },
         "protocol": "tribe",
         "recipients": [
           {
-            "enc": "qyU0JCcdTSB7GQlq0pC_GxftLiNSxUJ7AY5U-q6u0Rc",
-            "encryption_kid": "codex@localhost/enc/4",
-            "id": "codex@localhost",
-            "wrapped_cek": "KYk8RkYFiZU52IlU1t1AJ_7d0hijQrn5ClGuw_9mhLQSzkho21OIalLIYtibamfm"
+            "enc": "KA0Q6wpQOyTIb8npXj5IOLks3E614NDPZ7sTdD6nShU",
+            "encryption_kid": "worker@localhost/enc/4",
+            "id": "worker@localhost",
+            "wrapped_cek": "cgzgMwJ4GhIdFoxRHAdZkgYOkSPG5_9KVN98OeIT7603pXURT5AXlScwnp3VEfu7"
           }
         ],
         "sender": {
-          "id": "compaii",
-          "signing_kid": "compaii/sig/7"
+          "id": "sender",
+          "signing_kid": "sender/sig/7"
         },
         "signature": {
           "alg": "Ed25519",
-          "kid": "compaii/sig/7",
-          "value": "BDxNZrt8YtGM_5YN_ay2_w_R3RT8rtcPkARNk9NyjsDLznPtFFGyA5SmvTVcrcHQkfavD3ApgOQwq6wmv6EKBQ"
+          "kid": "sender/sig/7",
+          "value": "C1dFJC-Yx_DAl0jFbi9-rtzFhTXh0q359qft7cIaP4YPEFFkP1JDNaIgTLqgfwrtBz4jZRTO4S4bJyBeCaONDg"
         },
         "suite": "TB1_HPKE_X25519_HKDF_SHA256_CHACHA20POLY1305_ED25519_JCS",
         "version": 1
@@ -1032,13 +1032,13 @@
   ],
   "format": "tribe-v1-conformance-vectors/1",
   "test_recipient_private_keys": {
-    "codex@localhost": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A",
-    "oliva": "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2A"
+    "peer": "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2A",
+    "worker@localhost": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A"
   },
   "test_signing_private_seed": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
   "test_signing_public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
-  "valid_direct_canonical_unsigned_sha256": "84d336ffc5418e9c56cd1517e6c2b81afe8615e97233fe7bb6c172e8ce484b1c",
-  "valid_direct_envelope_sha256": "e282462b0501f6411e498268c2f4636849331031f60ada267865ebdbacf9b5f7",
-  "valid_direct_signature_preimage_sha256": "25173a2350f72a0d7676c5ef60b8ff7c90722039f7ca2e66d531acc596525f6d",
+  "valid_direct_canonical_unsigned_sha256": "3fe438699f1c5eeacd2449f46cdc389a039f76956b33c9de8e57f7e4a834a65a",
+  "valid_direct_envelope_sha256": "522573557c0addddebb8a1348fd2e23d78f4c01400c223fd52a32fcbcc386ff2",
+  "valid_direct_signature_preimage_sha256": "7b5a2276a812eff93c458b52fcd8be2c04073711e27ca1bc6fb1a9eea7f88e48",
   "warning": "All keys and byte strings are public test material; HPKE encapsulations are randomized."
 }

@@ -114,7 +114,7 @@ post-restore capability probes remain separate evidence.
 ## Current limitations
 
 - The CompAII example is a review candidate, not a deployed/live attestation.
-- Codex and CompAII still share one GitHub account.
+- Multiple agents still share one GitHub account.
 - Tribe v1, the collective publication adapter, and the canonical HMK contract
   are implemented in draft branches but not deployed.
 - `/we` discovery/diff/pull, species pull, proximity, realm controls, and

@@ -21,6 +21,10 @@ from tribe_broker_v1 import (
     SQLiteBroker,
 )
 from tribe_directory_v1 import Directory, DirectoryError, strict_json
+from tribe_locality_v1 import (
+    enforce_localhost_boundary,
+    parse_local_agent_ids,
+)
 from tribe_transport_v1 import validate_request
 
 
@@ -36,6 +40,7 @@ class TribeV1Service:
         directory: Directory,
         *,
         build_commit: str,
+        local_agent_ids: frozenset[str],
         clock_ms=None,
         directory_loader=None,
     ):
@@ -44,6 +49,9 @@ class TribeV1Service:
         self.broker = broker
         self.directory = directory
         self.build_commit = build_commit
+        if not local_agent_ids:
+            raise ValueError("local_agent_ids must be non-empty")
+        self.local_agent_ids = local_agent_ids
         self.clock_ms = clock_ms or (lambda: int(time.time() * 1000))
         self.directory_loader = directory_loader
 
@@ -65,6 +73,7 @@ class TribeV1Service:
             "build_commit": self.build_commit,
             "directory_epoch": directory.epoch,
             "directory_sha256": directory.hash,
+            "localhost_boundary": "enforced",
             "broker": broker_runtime,
         }
 
@@ -90,6 +99,13 @@ class TribeV1Service:
                 or body.get("sender", {}).get("id") != auth["agent_id"]
             ):
                 raise protocol.ProtocolError("unauthorized_sender")
+            if auth["agent_id"].endswith("@localhost"):
+                protocol.validate_structure(body)
+                enforce_localhost_boundary(
+                    auth["agent_id"],
+                    (item["id"] for item in body["recipients"]),
+                    self.local_agent_ids,
+                )
             context = directory.context(
                 sender_id=auth["agent_id"], now_ms=now
             )
@@ -251,6 +267,9 @@ def build_service_from_environment() -> tuple[TribeV1Service, str, int, int]:
             "TRIBE_V1_DIRECTORY_STATE"
         ),
         "TRIBE_V1_BUILD_COMMIT": os.environ.get("TRIBE_V1_BUILD_COMMIT"),
+        "TRIBE_V1_LOCAL_AGENT_IDS": os.environ.get(
+            "TRIBE_V1_LOCAL_AGENT_IDS"
+        ),
     }
     missing = [key for key, value in required.items() if not value]
     if missing:
@@ -284,6 +303,9 @@ def build_service_from_environment() -> tuple[TribeV1Service, str, int, int]:
             broker,
             directory,
             build_commit=required["TRIBE_V1_BUILD_COMMIT"],
+            local_agent_ids=parse_local_agent_ids(
+                required["TRIBE_V1_LOCAL_AGENT_IDS"]
+            ),
             directory_loader=lambda current_ms: Directory.load(
                 required["TRIBE_V1_DIRECTORY"],
                 required["TRIBE_V1_GOVERNANCE_ROOTS"],

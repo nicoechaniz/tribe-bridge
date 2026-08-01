@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from tribe_broker_v1 import SQLiteBroker
 from tribe_client_v1 import flush_outbox
 from tribe_crypto_v1 import KeyBundle
+from tribe_locality_v1 import parse_local_agent_ids
 
 
 def required(name):
@@ -25,6 +26,9 @@ def required(name):
 
 def main():
     keys = KeyBundle.load(required("TRIBE_V1_KEYS"))
+    local_agent_ids = parse_local_agent_ids(
+        required("TRIBE_V1_LOCAL_AGENT_IDS")
+    )
     routes = json.loads(required("TRIBE_V1_ROUTES"))
     if not isinstance(routes, dict):
         raise RuntimeError("TRIBE_V1_ROUTES must be a JSON object")
@@ -38,6 +42,7 @@ def main():
         outbox,
         routes,
         keys=keys,
+        local_agent_ids=local_agent_ids,
         now_ms=int(time.time() * 1000),
     )
     print(
