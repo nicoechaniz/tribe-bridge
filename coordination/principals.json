@@ -7,7 +7,7 @@
     },
     "compaii@localhost": {
       "enabled": true,
-      "github_logins": ["nicoechaniz"]
+      "github_logins": ["nicoechaniz", "compaii"]
     }
   }
 }
