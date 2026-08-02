@@ -18,6 +18,12 @@ from tribe_crypto_v1 import KeyBundle, encrypt_envelope, message_payload
 from tribe_directory_v1 import Directory
 from tribe_locality_v1 import parse_local_agent_ids
 from tribe_protocol_v1 import MAX_TTL_MS
+from tribe_sent_gate_v1 import (
+    append_sent,
+    default_log_path,
+    find_duplicates,
+    format_evidence,
+)
 
 
 def required(name):
@@ -41,12 +47,39 @@ def main():
         default="private",
     )
     parser.add_argument("--reply-to")
+    parser.add_argument("--force", action="store_true",
+                        help="send even if a materially identical message "
+                             "was already sent to this audience")
     parser.add_argument("--ttl-seconds", type=int, default=MAX_TTL_MS // 1000)
     parser.add_argument("--endpoint", action="append")
     args = parser.parse_args()
     text = sys.stdin.read(200_001) if args.text_stdin else args.text
     if len(text) > 200_000:
         parser.error("message text exceeds 200000 characters")
+
+    # ── duplicate gate (2026-08-02, Nico's rule) ──────────────────────
+    # Before composing, review what was already sent to this audience.
+    # A materially identical message blocks with evidence; on a TTY the
+    # operator is asked, otherwise re-run with --force.
+    audience_id_for_gate = args.group or args.to
+    hits = find_duplicates(default_log_path(),
+                           audience=audience_id_for_gate, text=text)
+    if hits and not args.force:
+        evidence = format_evidence(hits)
+        if sys.stdin.isatty():
+            print(evidence, file=sys.stderr)
+            answer = input("send anyway? [y/N] ").strip().lower()
+            if answer not in ("y", "yes"):
+                print(json.dumps({"ok": False, "blocked": "duplicate",
+                                  "similar": [h["message_id"]
+                                              for h in hits]}))
+                sys.exit(2)
+        else:
+            print(evidence, file=sys.stderr)
+            print(json.dumps({"ok": False, "blocked": "duplicate",
+                              "hint": "re-run with --force if genuinely new",
+                              "similar": [h["message_id"] for h in hits]}))
+            sys.exit(2)
 
     now = int(time.time() * 1000)
     directory = Directory.load(
@@ -96,13 +129,34 @@ def main():
             str(Path.home() / ".tribe-bridge/v1/client.sqlite"),
         )
     )
-    result = send_with_fallback(
-        envelope,
-        endpoints,
-        keys=keys,
-        local_agent_ids=local_agent_ids,
-        outbox=outbox,
-        now_ms=now,
+    try:
+        result = send_with_fallback(
+            envelope,
+            endpoints,
+            keys=keys,
+            local_agent_ids=local_agent_ids,
+            outbox=outbox,
+            now_ms=now,
+        )
+    except Exception:
+        # staged in the outbox for a later flush — the intent was
+        # expressed, and the gate must see it next time
+        append_sent(
+            default_log_path(),
+            audience=audience_id,
+            classification=args.classification,
+            text=text,
+            message_id=envelope["message_id"],
+            result="queued",
+        )
+        raise
+    append_sent(
+        default_log_path(),
+        audience=audience_id,
+        classification=args.classification,
+        text=text,
+        message_id=envelope["message_id"],
+        result="delivered" if result.get("receipt") else "queued",
     )
     print(
         json.dumps(
