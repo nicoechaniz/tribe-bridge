@@ -77,7 +77,9 @@ def main():
         else:
             print(evidence, file=sys.stderr)
             print(json.dumps({"ok": False, "blocked": "duplicate",
-                              "hint": "re-run with --force if genuinely new",
+                              "hint": "do NOT re-send the same content; "
+                                      "--force is only for genuinely new "
+                                      "information",
                               "similar": [h["message_id"] for h in hits]}))
             sys.exit(2)
 

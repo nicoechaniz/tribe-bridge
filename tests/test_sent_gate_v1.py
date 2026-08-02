@@ -106,6 +106,9 @@ def test_format_evidence_shows_ids_and_snippet(tmp_path):
     ev = format_evidence(hits)
     assert "m-evidence" in ev and "--force" in ev
     assert "EXACT DUPLICATE" in ev
+    # the block must teach, not just stop: tell the sender not to retry
+    assert "do NOT re-send" in ev
+    assert "already in the recipient's inbox" in ev
 
 
 def test_shortened_resend_caught_by_opener(tmp_path):

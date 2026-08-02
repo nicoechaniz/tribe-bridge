@@ -143,8 +143,16 @@ def format_evidence(hits: list[dict]) -> str:
             kind = f"same opener ({h.get('opener_similarity')})"
         else:
             kind = f"similarity {h['similarity']}"
-        lines.append(f"  - [{kind}] {when} id={h.get('message_id')}")
+        result = h.get("result", "?")
+        lines.append(f"  - [{kind}] {when} id={h.get('message_id')} "
+                     f"({result})")
         lines.append(f"    {snippet}")
-    lines.append("review the sent log; if this send carries genuinely new "
-                 "information, re-run with --force")
+    lines.append(
+        "do NOT re-send this content: the earlier send is already in the "
+        "recipient's inbox — re-sending adds noise, not signal, and the "
+        "recipient will see the repetition as the problem, not the "
+        "message. If you are waiting on them, wait; the ids above are "
+        "your proof of delivery. --force exists ONLY for false positives "
+        "(genuinely new information that merely looks similar) — using it "
+        "to force the same content through defeats this gate.")
     return "\n".join(lines)
