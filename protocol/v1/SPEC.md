@@ -102,13 +102,23 @@ The Ed25519 signature authenticates all metadata, the payload ciphertext and
 nonce, recipient IDs, key IDs, HPKE encapsulations, and wrapped CEKs.
 Verification MUST occur before HPKE open or payload decryption.
 
+V1 registers three encrypted plaintext families:
+
+- `application/vnd.tribe.message+json` / `tribe-message/v1`;
+- `application/vnd.daimon.we+json` / `tribe-weave/v1`;
+- `application/vnd.tribe.membership+json` / `tribe-membership/v1`.
+
+The authenticated content type MUST match the decrypted payload schema.
+Brokers remain payload-blind. Weave being membership and founded-tribe
+membership are application contracts, not directory side effects.
+
 ## 4. Identifiers and time
 
 `message_id` MUST be an RFC 9562 UUIDv7. Its embedded millisecond timestamp
 MUST be within five minutes of `issued_at_ms`. It is generated once and MUST
 remain unchanged across retries and routes.
 
-`issued_at_ms` and `expires_at_ms` are Unix milliseconds. Maximum TTL is 24
+`issued_at_ms` and `expires_at_ms` are Unix milliseconds. Maximum TTL is 48
 hours. Brokers and endpoints MUST reject expired messages and messages issued
 more than five minutes in the future. Implementations SHOULD use authenticated
 time and MUST monitor clock drift.

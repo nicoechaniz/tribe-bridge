@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://daimon.network/tribe/v1/membership.schema.json",
+  "type": "object",
+  "allOf": [
+    {"$ref": "#/$defs/signed"},
+    {"oneOf": [
+      {"$ref": "#/$defs/declaration"},
+      {"$ref": "#/$defs/invitation"},
+      {"$ref": "#/$defs/acceptance"},
+      {"$ref": "#/$defs/change"},
+      {"$ref": "#/$defs/transfer"},
+      {"$ref": "#/$defs/transferAcceptance"}
+    ]}
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "principal": {"type": "string", "minLength": 1, "maxLength": 128},
+    "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "time": {"type": "integer", "minimum": 0},
+    "signed": {
+      "type": "object",
+      "required": ["artifact_hash", "signature"],
+      "properties": {
+        "artifact_hash": {"$ref": "#/$defs/hash"},
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["alg", "kid", "value"],
+          "properties": {
+            "alg": {"const": "Ed25519"},
+            "kid": {"type": "string", "minLength": 1, "maxLength": 128},
+            "value": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+          }
+        }
+      }
+    },
+    "declaration": {
+      "type": "object",
+      "required": ["schema", "founder_principal_id", "founder_epoch", "policy_ref", "nonce", "created_at_ms", "tribe_ref"],
+      "properties": {
+        "schema": {"const": "tribe-declaration/v1"},
+        "founder_principal_id": {"$ref": "#/$defs/principal"},
+        "founder_epoch": {"const": 1},
+        "policy_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+        "nonce": {"type": "string", "minLength": 16, "maxLength": 128},
+        "created_at_ms": {"$ref": "#/$defs/time"},
+        "tribe_ref": {"type": "string", "pattern": "^tribe:[a-f0-9]{64}$"}
+      }
+    },
+    "invitation": {
+      "type": "object",
+      "required": ["schema", "tribe_ref", "founder_epoch", "invite_id", "invitee_principal_id", "issued_at_ms", "expires_at_ms", "nonce", "founder_principal_id"],
+      "properties": {
+        "schema": {"const": "tribe-invitation/v1"},
+        "tribe_ref": {"type": "string", "pattern": "^tribe:[a-f0-9]{64}$"},
+        "founder_epoch": {"type": "integer", "minimum": 1},
+        "invite_id": {"type": "string", "format": "uuid"},
+        "invitee_principal_id": {"$ref": "#/$defs/principal"},
+        "issued_at_ms": {"$ref": "#/$defs/time"},
+        "expires_at_ms": {"$ref": "#/$defs/time"},
+        "nonce": {"type": "string", "minLength": 16, "maxLength": 128},
+        "founder_principal_id": {"$ref": "#/$defs/principal"}
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "required": ["schema", "tribe_ref", "founder_epoch", "invite_id", "invitation_hash", "member_principal_id", "accepted_at_ms"],
+      "properties": {
+        "schema": {"const": "tribe-acceptance/v1"},
+        "tribe_ref": {"type": "string", "pattern": "^tribe:[a-f0-9]{64}$"},
+        "founder_epoch": {"type": "integer", "minimum": 1},
+        "invite_id": {"type": "string", "format": "uuid"},
+        "invitation_hash": {"$ref": "#/$defs/hash"},
+        "member_principal_id": {"$ref": "#/$defs/principal"},
+        "accepted_at_ms": {"$ref": "#/$defs/time"}
+      }
+    },
+    "change": {
+      "type": "object",
+      "required": ["schema", "tribe_ref", "founder_epoch", "action", "member_principal_id", "actor_principal_id", "occurred_at_ms"],
+      "properties": {
+        "schema": {"const": "tribe-membership-change/v1"},
+        "tribe_ref": {"type": "string", "pattern": "^tribe:[a-f0-9]{64}$"},
+        "founder_epoch": {"type": "integer", "minimum": 1},
+        "action": {"enum": ["expel", "leave"]},
+        "member_principal_id": {"$ref": "#/$defs/principal"},
+        "actor_principal_id": {"$ref": "#/$defs/principal"},
+        "occurred_at_ms": {"$ref": "#/$defs/time"}
+      }
+    },
+    "transfer": {
+      "type": "object",
+      "required": ["schema", "tribe_ref", "founder_epoch", "current_founder_principal_id", "successor_principal_id", "occurred_at_ms"],
+      "properties": {
+        "schema": {"const": "tribe-founder-transfer/v1"},
+        "tribe_ref": {"type": "string", "pattern": "^tribe:[a-f0-9]{64}$"},
+        "founder_epoch": {"type": "integer", "minimum": 1},
+        "current_founder_principal_id": {"$ref": "#/$defs/principal"},
+        "successor_principal_id": {"$ref": "#/$defs/principal"},
+        "occurred_at_ms": {"$ref": "#/$defs/time"}
+      }
+    },
+    "transferAcceptance": {
+      "type": "object",
+      "required": ["schema", "tribe_ref", "previous_founder_epoch", "new_founder_epoch", "transfer_hash", "successor_principal_id", "occurred_at_ms"],
+      "properties": {
+        "schema": {"const": "tribe-founder-acceptance/v1"},
+        "tribe_ref": {"type": "string", "pattern": "^tribe:[a-f0-9]{64}$"},
+        "previous_founder_epoch": {"type": "integer", "minimum": 1},
+        "new_founder_epoch": {"type": "integer", "minimum": 2},
+        "transfer_hash": {"$ref": "#/$defs/hash"},
+        "successor_principal_id": {"$ref": "#/$defs/principal"},
+        "occurred_at_ms": {"$ref": "#/$defs/time"}
+      }
+    }
+  }
+}

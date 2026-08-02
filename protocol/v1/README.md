@@ -2,6 +2,12 @@
 
 This directory is the review boundary for the v1 wire and security contract.
 
+The encrypted envelope carries ordinary messages,
+`application/vnd.daimon.we+json` objects, and
+`application/vnd.tribe.membership+json` artifacts. The broker validates
+envelope signatures, audiences, bounds, replay, and expiry without deciding
+same-being membership, local adoption, or resource grants.
+
 - `THREAT-MODEL.md`: actors, assets, attacks, guarantees, and non-goals.
 - `SPEC.md`: normative envelope, crypto, directory, replay, and cutover rules.
 - `schema/*.schema.json`: closed envelope, directory, acknowledgement, and

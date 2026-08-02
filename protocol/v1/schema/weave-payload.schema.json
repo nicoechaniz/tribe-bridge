@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://daimon.network/tribe/v1/weave-payload.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "kind", "from", "to", "message"],
+  "properties": {
+    "schema": {"const": "tribe-weave/v1"},
+    "kind": {"const": "weave"},
+    "from": {"type": "string", "minLength": 1, "maxLength": 128},
+    "to": {"type": "string", "minLength": 1, "maxLength": 128},
+    "message": {"type": "object"}
+  }
+}
+
