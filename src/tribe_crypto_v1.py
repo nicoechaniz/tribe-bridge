@@ -39,6 +39,13 @@ MESSAGE_FIELDS = {
     "classification",
     "reply_to",
 }
+WEAVE_FIELDS = {"schema", "kind", "from", "to", "message"}
+MEMBERSHIP_FIELDS = {"schema", "kind", "from", "to", "artifact"}
+CONTENT_TYPES = {
+    "tribe-message/v1": "application/vnd.tribe.message+json",
+    "tribe-weave/v1": "application/vnd.daimon.we+json",
+    "tribe-membership/v1": "application/vnd.tribe.membership+json",
+}
 MAX_PLAINTEXT_BYTES = 512 * 1024
 
 
@@ -202,6 +209,42 @@ def _validate_message_payload(
     return payload
 
 
+def weave_payload(*, sender: str, to: str, message: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(message, dict) or not isinstance(sender, str) or not isinstance(to, str):
+        raise ValueError("invalid weave payload")
+    return {"schema": "tribe-weave/v1", "kind": "weave", "from": sender, "to": to, "message": message}
+
+
+def membership_payload(*, sender: str, to: str, artifact: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(artifact, dict) or not isinstance(sender, str) or not isinstance(to, str):
+        raise ValueError("invalid membership payload")
+    return {"schema": "tribe-membership/v1", "kind": "membership", "from": sender, "to": to, "artifact": artifact}
+
+
+def _content_type(payload: dict[str, Any]) -> str:
+    try:
+        return CONTENT_TYPES[payload["schema"]]
+    except (KeyError, TypeError) as exc:
+        raise ValueError("unsupported payload schema") from exc
+
+
+def _validate_typed_payload(payload: Any, envelope: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise protocol.ProtocolError("invalid_plaintext")
+    schema = payload.get("schema")
+    if CONTENT_TYPES.get(schema) != envelope["content_type"]:
+        raise protocol.ProtocolError("invalid_plaintext")
+    if payload.get("from") != envelope["sender"]["id"] or payload.get("to") != envelope["audience"]["id"]:
+        raise protocol.ProtocolError("invalid_plaintext")
+    if schema == "tribe-message/v1":
+        return _validate_message_payload(payload, envelope)
+    if schema == "tribe-weave/v1" and set(payload) == WEAVE_FIELDS and payload.get("kind") == "weave" and isinstance(payload.get("message"), dict):
+        return payload
+    if schema == "tribe-membership/v1" and set(payload) == MEMBERSHIP_FIELDS and payload.get("kind") == "membership" and isinstance(payload.get("artifact"), dict):
+        return payload
+    raise protocol.ProtocolError("invalid_plaintext")
+
+
 def encrypt_envelope(
     payload: dict[str, Any],
     *,
@@ -217,7 +260,7 @@ def encrypt_envelope(
 ) -> dict[str, Any]:
     now = int(time.time() * 1000) if now_ms is None else now_ms
     if not 1_000 <= ttl_ms <= protocol.MAX_TTL_MS:
-        raise ValueError("ttl_ms must be between 1 second and 24 hours")
+        raise ValueError("ttl_ms must be between 1 second and 48 hours")
     keys.verify_against(directory, now)
     audience = directory.audience(
         audience_type, audience_id, audience_epoch
@@ -247,7 +290,7 @@ def encrypt_envelope(
             "id": audience["id"],
             "epoch": audience["epoch"],
         },
-        "content_type": "application/vnd.tribe.message+json",
+        "content_type": _content_type(payload),
         "suite": protocol.SUITE,
         "payload": {"nonce": "", "ciphertext": ""},
         "recipients": [],
@@ -354,7 +397,7 @@ def decrypt_envelope(
     if len(plaintext) > MAX_PLAINTEXT_BYTES:
         raise protocol.ProtocolError("invalid_plaintext")
     payload = strict_json(plaintext, max_bytes=MAX_PLAINTEXT_BYTES)
-    return _validate_message_payload(payload, envelope)
+    return _validate_typed_payload(payload, envelope)
 
 
 def write_key_bundle(path: Path | str, value: dict[str, Any]) -> None:

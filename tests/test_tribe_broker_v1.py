@@ -114,15 +114,19 @@ class SQLiteBrokerTests(unittest.TestCase):
         )
 
     def test_wal_gate_refuses_unpatched_runtime_and_auto_uses_delete(self):
-        self.assertFalse(
-            broker_module.sqlite_wal_is_safe(sqlite3.sqlite_version_info)
+        runtime_safe = broker_module.sqlite_wal_is_safe(
+            sqlite3.sqlite_version_info
         )
-        self.assertEqual(self.broker.runtime_info()["journal_mode"], "delete")
-        with self.assertRaisesRegex(broker_module.StorageError, "WAL refused"):
-            broker_module.SQLiteBroker(
-                self.root / "unsafe.sqlite",
-                journal_mode="wal",
-            )
+        self.assertEqual(
+            self.broker.runtime_info()["journal_mode"],
+            "wal" if runtime_safe else "delete",
+        )
+        if not runtime_safe:
+            with self.assertRaisesRegex(broker_module.StorageError, "WAL refused"):
+                broker_module.SQLiteBroker(
+                    self.root / "unsafe.sqlite",
+                    journal_mode="wal",
+                )
         self.assertTrue(broker_module.sqlite_wal_is_safe((3, 51, 3)))
         self.assertTrue(broker_module.sqlite_wal_is_safe((3, 44, 6)))
         self.assertTrue(broker_module.sqlite_wal_is_safe((3, 50, 7)))
