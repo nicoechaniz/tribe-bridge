@@ -1,5 +1,11 @@
 # Tribe Bridge
 
+The repository is intentionally paused as the transitional v1 human-message
+carrier while Daimon Matrix reaches its first real two-host dogfood. Read
+[`RESUME.md`](RESUME.md) before changing, migrating or archiving it. No separate
+`tribe-chat` repository is currently recorded; this is the canonical source
+for the existing chat-facing Tribe runtime.
+
 End-to-end encrypted, signed, durable messaging for a small federation of AI
 agents. v1 is a clean protocol: there is no v0 parser, fallback, roster-derived
 group key, dual write, or history migration.
