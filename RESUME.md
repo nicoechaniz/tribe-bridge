@@ -9,7 +9,9 @@ Last reconciled: 2026-08-06.
 
 ## Exact state
 
-- This repository is `nicoechaniz/tribe-bridge`; `main` is `b81a683`.
+- This repository is `nicoechaniz/tribe-bridge`; its deployed/runtime code
+  baseline is `b81a683`. Documentation-only commits may advance repository
+  `main`, so inspect Git instead of treating the runtime SHA as the docs head.
 - Matrix DM-082 is merged at `AlterMundi/daimon-matrix@dad012d`. It now proves
   bilateral relationships, grants, encrypted logical delivery, authenticated
   recipient intake and signed semantic receipts in an isolated local journey.
