@@ -1,5 +1,21 @@
 # Daimon Matrix operational contract
 
+## 2026-08-06 supersession note
+
+This document preserves Tribe Bridge's local descriptor/selector boundary, but
+its 2026-07-31 feature inventory is no longer the current Matrix roadmap.
+`AlterMundi/daimon-matrix@dad012d` now implements `/me`, `/we`, diff/sync,
+species, sources, bilateral relationships, founded Tribes, grants, logical
+communication and encrypted peer transport. Tribe's `daimon-manifest/v1`
+remains descriptive compatibility evidence only and cannot override or
+reimplement any of those Matrix authorities.
+
+The projects are paused before Matrix DM-083 live dogfood. Read
+[`../RESUME.md`](../RESUME.md) and the Matrix repository `RESUME.md` before
+operational work. Tribe v1 remains the separately accounted human-message
+carrier for that future authorized session; its ACK is not Matrix intake or a
+Matrix semantic receipt.
+
 ## Interpretation boundary
 
 The [Daimon Matrix source](https://hackmd.io/@nicoechaniz/daimon-matrix)
@@ -37,12 +53,14 @@ model response, self-description, endpoint reachability, or secret reference.
 | `/tribe` | Tribe v1 explicit audiences plus GitHub coordination | Tribe for messages; GitHub for work ownership |
 | `/human` | Explicit human-scoped endpoint | Deployment-specific identity/consent |
 | `/all`, `/near`, `/here` | Declared communication scopes | No implicit membership, proximity, or authorization |
-| `/we.*`, `/source.pull`, `/species.pull.*` | Inventory entries only | Aspirational until merge/consent/provenance rules exist |
+| `/we.*`, `/source.pull`, `/species.pull.*` | Implemented by the installed `daimon-matrix` runtime | Matrix root, signed history and observer-local policy; Tribe inventory entries remain descriptive only |
 
 HMK is private operational memory. An independently authored Wiki is
 authoritative for its documents. collective-memory is a reviewed downstream
 publication/index. GitHub Issues/Project/PRs own work coordination. Tribe v1
-owns encrypted message delivery. None replaces the others.
+owns its transitional encrypted transport/deduplication/ACK evidence; Matrix
+owns relationship/grant authority and canonical communication semantics. None
+replaces the others.
 
 ## Trust domains and secret handling
 
@@ -115,9 +133,10 @@ post-restore capability probes remain separate evidence.
 
 - The CompAII example is a review candidate, not a deployed/live attestation.
 - Multiple agents still share one GitHub account.
-- Tribe v1, the collective publication adapter, and the canonical HMK contract
-  are implemented in draft branches but not deployed.
-- `/we` discovery/diff/pull, species pull, proximity, realm controls, and
-  independent capability measurement remain future work.
-- Definition/species hashing uses the whole observed source until Nico defines
-  a smaller canonical `/me` species block and inheritance rules.
+- Tribe v1 is deployed transitionally; Matrix DM-082 replacement behavior is
+  locally proven but no live Matrix logical-message route or DM-083 session is
+  claimed.
+- Collective-memory integration, proximity/realm controls and independent
+  capability measurement remain separate work.
+- This repository's historical concept inventory is not a substitute for the
+  current Matrix schemas, signed events, conformance registry or Project 9.
