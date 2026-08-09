@@ -1,0 +1,8 @@
+[Unit]
+Description=Tribe v1 client directory auto-update (fetch + verify + install)
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.tribe-bridge/v1/directory-update.env
+ExecStart=%h/.tribe-bridge/v1/venv/bin/python %h/Projects/tribe-bridge/scripts/update_directory_client_v1.py --url ${TRIBE_V1_DIRECTORY_URL} --state ${TRIBE_V1_DIRECTORY_STATE}
+Nice=10
