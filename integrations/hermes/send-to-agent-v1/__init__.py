@@ -60,9 +60,25 @@ def _repo() -> Path:
 
 
 def _run(arguments, *, stdin_text=None):
+    repo = _repo()
+    client_env = os.environ.get("TRIBE_CLIENT_ENV")
+    if client_env:
+        command = [str(repo / "scripts" / "tribe"), *arguments]
+    else:
+        script_by_command = {
+            "send": "scripts/send_v1.py",
+            "inbox": "scripts/check_inbox_v1.py",
+        }
+        if not arguments or arguments[0] not in script_by_command:
+            raise RuntimeError("unknown Tribe v1 command")
+        command = [
+            os.environ.get("TRIBE_V1_PYTHON", "python3"),
+            script_by_command[arguments[0]],
+            *arguments[1:],
+        ]
     result = subprocess.run(
-        [os.environ.get("TRIBE_V1_PYTHON", "python3"), *arguments],
-        cwd=_repo(),
+        command,
+        cwd=repo,
         capture_output=True,
         text=True,
         timeout=60,
@@ -91,7 +107,7 @@ class TribeV1Provider:
         try:
             if tool_name == "send_to_agent":
                 command = [
-                    "scripts/send_v1.py",
+                    "send",
                     "--to",
                     args["to"],
                     "--text-stdin",
@@ -104,7 +120,7 @@ class TribeV1Provider:
                 )
             if tool_name == "send_to_tribe_group":
                 command = [
-                    "scripts/send_v1.py",
+                    "send",
                     "--group",
                     args["group"],
                     "--classification",
@@ -119,7 +135,7 @@ class TribeV1Provider:
                 )
             if tool_name == "check_inbox":
                 return json.dumps(
-                    _run(["scripts/check_inbox_v1.py"]),
+                    _run(["inbox"]),
                     ensure_ascii=False,
                 )
             raise RuntimeError(f"unknown tool: {tool_name}")
