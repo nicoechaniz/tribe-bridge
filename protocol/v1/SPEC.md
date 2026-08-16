@@ -1,6 +1,8 @@
 # Tribe Protocol v1
 
-Status: draft normative specification for independent review.
+Status: release-candidate normative specification. v1 is the repository's only
+supported protocol; this status does not assert a deployment. The final PR #65
+head still requires its exact independent review and merge gates.
 
 The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
 RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are to be interpreted as
@@ -172,14 +174,10 @@ envelope admitted while that epoch was active. `revoked` epochs remain invalid
 for both admission and receive. Recipient-policy changes, including observer
 changes, MUST use a new audience epoch rather than mutate an existing one.
 
-A governance-signed retired observed direct MAY set
-`legacy_unobserved_receive: true` only to repair a rollout in which the same
-audience epoch was admitted both before and after observers were added. For
-endpoint receive only, that flag permits the exact member-only set in addition
-to the exact member-plus-observers set. It never authorizes encryption or
-broker admission, and an observer still cannot read a member-only envelope
-because it has no CEK wrap. Active, revoked, group, and unobserved audiences
-MUST reject the flag. Remove the valve with the retired epoch after retention.
+An audience epoch has exactly one recipient policy. An observer change MUST
+create a successor epoch; mutating an epoch in place is invalid and there is no
+receive-time compatibility exception. A retired epoch retains only its own
+original recipient set for already-admitted delivery.
 
 ## 6. Identity directory and authorization
 

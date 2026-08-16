@@ -433,7 +433,6 @@ def compose_rotation(
             if (audience["type"], audience["id"]) == key
         ) + 1
         successor["status"] = "active"
-        successor.pop("legacy_unobserved_receive", None)
         candidate["audiences"].append(successor)
 
     # Validate every closed structural and semantic rule before emitting the
