@@ -1,0 +1,84 @@
+{
+  "schema": "tribe-bridge-release-candidate-receipt/v1",
+  "generated_at": "2026-08-16T17:26:40Z",
+  "deployment_asserted": false,
+  "receipt_content_address": {
+    "algorithm": "sha256",
+    "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
+    "sha256": "f5e5751bccf76651b0379500cbc8b86f22748d6d1fe42d46d464fabe3826b552"
+  },
+  "source": {
+    "repository": "nicoechaniz/tribe-bridge",
+    "pull_request": 65,
+    "issue": 64,
+    "commit": "b1a2ed855bcd1f78a5e54172b52bf939074151b6",
+    "tree": "ed2bac55a6d8b17308ee692860e8ca6f24aa7f4f",
+    "reviewed_pre_cleanup_commit": "7b9acda839423aa21afceae22abcd47008bbeba6",
+    "reviewed_pre_cleanup_tree": "e443706cf191ab31d93252a128ed04530f6da39f"
+  },
+  "integrated_boundaries": {
+    "matrix_merged_commit": "75b34804f8d013d348129946c0cd541a4448e71d",
+    "matrix_tree": "38f3edb002ac52aac2d51fbf533cb58c38b813c5",
+    "cluster_code_commit": "93230a890ffad78aa1d10af2b68a33a45ff9845c",
+    "cluster_tree": "598f502df42408d3f6e0dc788e765461fb54081b"
+  },
+  "archive": {
+    "format": "git-archive-tar",
+    "prefix": "tribe-bridge-b1a2ed855bcd/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-b1a2ed855bcd/ --output=tribe-bridge-b1a2ed855bcd.tar b1a2ed855bcd1f78a5e54172b52bf939074151b6",
+    "bytes": 757760,
+    "sha256": "84a0f1bb068b12df48884fee28a3f8fac48f3fbb9aa36d0e42dbd4f51b08714d",
+    "receipt_in_archive": false,
+    "receipt_note": "This receipt records the exact qualified source commit and is committed separately, avoiding a self-referential archive hash."
+  },
+  "requirements": {
+    "path": "protocol/v1/requirements-test.txt",
+    "bytes": 21,
+    "sha256": "a150422ed6f366c9a13cc4fb218ae572040f4009a21d01582820b830e2758428",
+    "resolved_cryptography": "50.0.0"
+  },
+  "suite": {
+    "command": "python -W error::ResourceWarning -m unittest discover -s tests -q",
+    "runs": [
+      {"python": "3.10.20", "tests": 118, "result": "pass"},
+      {"python": "3.11.15", "tests": 118, "result": "pass"},
+      {"python": "3.12.13", "tests": 118, "result": "pass"},
+      {"python": "3.13.14", "tests": 118, "result": "pass"}
+    ],
+    "reruns_used_as_evidence": false,
+    "flakes_observed": false
+  },
+  "static_gates": {
+    "compile": "pass on Python 3.10.20, 3.11.15, 3.12.13 and 3.13.14 for src, scripts, tests and protocol/v1/generate_vectors.py",
+    "ruff": {
+      "version": "0.16.3",
+      "scope": [
+        "src/tribe_directory_v1.py",
+        "src/tribe_rotation_v1.py",
+        "tests/test_tribe_v1_integration.py"
+      ],
+      "rules": "E9,F63,F7,F82",
+      "result": "pass"
+    },
+    "mypy": {
+      "version": "2.3.1",
+      "scope": [
+        "src/tribe_directory_v1.py",
+        "src/tribe_rotation_v1.py",
+        "tests/test_tribe_v1_integration.py"
+      ],
+      "options": "MYPYPATH=src --follow-imports=skip",
+      "result": "pass"
+    },
+    "git_diff_check": "pass"
+  },
+  "human_gates_remaining": [
+    "independent approval of the final exact PR #65 head and normal protected merge",
+    "selection and independent provisioning of real custody holders",
+    "participant consent before contact or operation",
+    "approval of real key generation, governance signatures and directory publication",
+    "approval of provisioning, service or timer changes and authenticated live tests",
+    "consent and independent custody for any Matrix cross-being canary",
+    "approval of final cutover and eventual Tribe service or repository retirement"
+  ]
+}

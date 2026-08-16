@@ -69,5 +69,7 @@ rotation and recovery tests; they do not authorize a live rotation.
 The integrated roadmap is authoritative in the Matrix repository. Tribe's
 component roadmap is
 [`docs/adversarial-review-and-roadmap.md`](docs/adversarial-review-and-roadmap.md),
+the local qualification is recorded in
+[`docs/release-candidate-receipt.json`](docs/release-candidate-receipt.json),
 and [`docs/v1-cutover.md`](docs/v1-cutover.md) is preserved as historical
 evidence rather than current deployment state.

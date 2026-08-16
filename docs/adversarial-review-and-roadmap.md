@@ -91,6 +91,11 @@ Until those gates are satisfied, the only honest claim is local reproducible
 preparation. No physical or distributed-custody guarantee follows from the
 synthetic holders.
 
+The exact local suite, requirements and qualified source archive are recorded
+in [`release-candidate-receipt.json`](release-candidate-receipt.json). The
+receipt intentionally records a source commit rather than claiming its own
+record-only commit is part of the qualified archive.
+
 ## Threats retained by design
 
 - A broker still observes timing, identifiers, sizes and availability.
