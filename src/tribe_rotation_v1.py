@@ -553,6 +553,10 @@ def activate_staged_bundle(
         staged = KeyBundle.from_bytes(staged_bytes)
         if current.agent_id != staged.agent_id:
             raise RotationError("staged bundle belongs to another agent")
+        # Revalidate even the idempotent path.  Equality with the on-disk
+        # bundle is not authority if the successor is early, expired, revoked,
+        # or lacks the encryption key selected by the signed directory.
+        staged.verify_against(directory, now_ms)
         if current.signing_kid == staged.signing_kid:
             if current_bytes != staged_bytes:
                 raise RotationError("activated bundle differs from staged bundle")
@@ -572,7 +576,6 @@ def activate_staged_bundle(
                 raise RotationError(
                     "staged bundle substitutes retained private material"
                 )
-        staged.verify_against(directory, now_ms)
         backup = current_path.with_name(
             f"{current_path.name}.pre-{staged.signing_kid.replace('/', '_')}"
         )

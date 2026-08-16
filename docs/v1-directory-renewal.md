@@ -36,15 +36,20 @@ The ceremony is intentionally split so no composer holds participant keys:
    deterministic unsigned D+1 plus a redacted receipt.
 4. D+1 gives new keys a common future `not_before_ms` and ends both old public
    key validity windows exactly at activation. Old encryption *private* keys
-   remain local for the drain, but cannot authorize post-cut traffic. D+1 also
-   retires every active audience predecessor and adds an identical active
-   successor at the next audience epoch.
+   remain local for the drain, but cannot authorize post-cut traffic: broker
+   admission and HTTP authentication check both issuance and the trusted
+   receive time. Endpoint receive still checks the historical issuance window
+   so ciphertext admitted before the cut remains decryptable. D+1 also retires
+   every active audience predecessor and adds an identical active successor at
+   the next audience epoch.
 5. Independent governance holders append their signatures one at a time with
    `sign_directory_v1.py`. The configured threshold is verified by normal
    directory loading. The aggregator never receives all private keys.
 6. After the signed successor is independently distributed and accepted,
    `rotate_keys_v1.py activate` atomically installs the local staged bundle. It
-   refuses to drop or substitute old encryption keys and is safe to retry.
+   refuses to drop or substitute old encryption keys, requires the directory's
+   current signing and encryption keys, and revalidates those requirements on
+   an idempotent retry.
 7. Keep old encryption custody for at least the 48-hour maximum envelope TTL
    plus buffer (the synthetic policy uses 72 hours). Pruning is a later,
    separately authorized local action.
@@ -120,8 +125,11 @@ set, roots continuity and anti-rollback state. A separate owner-only durable
 high-water binds the target agent, directory epoch/hash, roots hash and exact
 package hash: exact replay is idempotent, while an older or same-epoch
 conflicting package is rejected. Installation runs under a restartable journal,
-so a crash can only leave D or a resumable D+1 transition. Invalid rollback,
-root or split-view attempts mutate nothing and leave no journal.
+so a crash can only leave D or a resumable D+1 transition. The journal records
+the trusted time at which that exact signed package passed all validity checks;
+only that byte-exact transaction may finish after package expiry. An expired
+package with no pre-existing exact journal cannot start. Invalid rollback, root
+or split-view attempts mutate no installed artifact and leave no journal.
 
 ```bash
 # Synthetic authority; never treat this test key as live governance.

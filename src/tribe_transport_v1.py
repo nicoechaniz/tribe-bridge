@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import uuid
 from hashlib import sha256
 from typing import Any
@@ -57,7 +56,7 @@ def wrap_request(
         raise ValueError("unsupported signed request target")
     if not 1_000 <= ttl_ms <= MAX_AUTH_TTL_MS:
         raise ValueError("invalid request auth TTL")
-    auth = {
+    auth: dict[str, Any] = {
         "schema": "tribe-http-auth/v1",
         "agent_id": keys.agent_id,
         "signing_kid": keys.signing_kid,
@@ -136,9 +135,13 @@ def validate_request(
         or record["owner"] != auth["agent_id"]
         or record["status"] != "active"
         or auth["issued_at_ms"] < record["not_before_ms"]
+        or now_ms < record["not_before_ms"]
         or (
             record["not_after_ms"] is not None
-            and auth["issued_at_ms"] >= record["not_after_ms"]
+            and (
+                auth["issued_at_ms"] >= record["not_after_ms"]
+                or now_ms >= record["not_after_ms"]
+            )
         )
     ):
         raise protocol.ProtocolError("unauthorized_sender")

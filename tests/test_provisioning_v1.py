@@ -176,6 +176,73 @@ class ProvisioningTests(unittest.TestCase):
         self.assertEqual(receipt["directory_epoch"], 1)
         self.assertFalse((destination / "provision-journal.json").exists())
 
+    def test_exact_crash_resume_crosses_expiry_but_expired_start_is_rejected(self):
+        package = self.tmp / "package"
+        self.build(package)
+        destination = self.tmp / "client"
+
+        def crash(phase):
+            if phase == "directory-installed":
+                raise RuntimeError("synthetic crash before expiry")
+
+        with self.assertRaisesRegex(RuntimeError, "before expiry"):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+                fault_hook=crash,
+            )
+        journal = json.loads(
+            (destination / "provision-journal.json").read_text()
+        )
+        self.assertEqual(journal["authorized_at_ms"], NOW)
+
+        conflicting = self.tmp / "conflicting-package"
+        self.build(
+            conflicting,
+            provisioning_id="synthetic-alice-not-the-started-package",
+        )
+        with self.assertRaisesRegex(
+            ProvisioningError, "another provisioning transaction"
+        ):
+            apply_package(
+                conflicting,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW + 60 * 60 * 1000,
+            )
+
+        receipt = apply_package(
+            package,
+            self.public_authority,
+            self.material["bundles"]["alice"],
+            destination,
+            authorized_local_agent_ids=frozenset({"alice"}),
+            now_ms=NOW + 60 * 60 * 1000,
+        )
+        self.assertEqual(receipt["directory_epoch"], 1)
+        self.assertFalse((destination / "provision-journal.json").exists())
+        self.assertTrue((destination / "provision-high-water.json").exists())
+
+        expired_destination = self.tmp / "expired-start"
+        with self.assertRaisesRegex(
+            ProvisioningError, "not currently valid"
+        ):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                expired_destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW + 60 * 60 * 1000,
+            )
+        self.assertFalse(expired_destination.exists())
+
     def test_high_water_commit_crash_resumes_exact_and_rejects_conflict(self):
         package = self.tmp / "package"
         self.build(package)

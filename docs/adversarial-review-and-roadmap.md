@@ -31,14 +31,18 @@ The release-candidate branch must demonstrate, entirely with disposable state:
    partial announcement sets; advances the directory and every active audience
    deterministically; and emits only public evidence.
 3. Local activation is atomic, idempotent and retains old encryption keys for
-   queued ciphertext through the bounded drain.
+   queued ciphertext through the bounded drain. It requires the currently
+   selected signing and encryption keys even on retry, while trusted broker
+   receipt time and HTTP verification fence both old public keys at the cut.
 4. Recovery after an accepted advance produces a forward successor and rejects
    rollback or any recovery without active signing and encryption coverage for
    every agent through the candidate directory's exact expiry.
 5. A content-addressed provisioning package applies without SSH or network
    access, matches already-local private keys, persists a target/epoch/hash/
    package high-water, accepts only exact replay at the same epoch, validates
-   explicit locality, survives crashes and emits a sanitized receipt.
+   explicit locality, survives crashes including expiry during an exact
+   journaled transaction, refuses to start an expired transaction and emits a
+   sanitized receipt.
 6. The complete supported-Python suite, protocol vectors, coordination audit,
    compilation and diff checks pass cleanly with no rerun used as evidence.
 7. An independent adversarial reviewer approves the exact candidate hash before
