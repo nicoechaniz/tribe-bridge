@@ -53,7 +53,6 @@ def main():
     build.add_argument("--provisioning-id", required=True)
     build.add_argument("--agent-id", required=True)
     build.add_argument("--build-commit", required=True)
-    build.add_argument("--now-ms", type=int)
     build.add_argument("--expires-at-ms", type=int, required=True)
 
     apply = commands.add_parser("apply")
@@ -62,15 +61,13 @@ def main():
     apply.add_argument("--keys", type=Path, required=True)
     apply.add_argument("--destination", type=Path, required=True)
     apply.add_argument("--local-agent-id", action="append", default=[])
-    apply.add_argument("--now-ms", type=int)
 
     inspect = commands.add_parser("doctor")
     inspect.add_argument("--destination", type=Path, required=True)
     inspect.add_argument("--keys", type=Path, required=True)
     inspect.add_argument("--agent-id", required=True)
-    inspect.add_argument("--now-ms", type=int)
     arguments = parser.parse_args()
-    now_ms = arguments.now_ms if hasattr(arguments, "now_ms") and arguments.now_ms is not None else int(time.time() * 1000)
+    now_ms = int(time.time() * 1000)
 
     try:
         if arguments.command == "authority-create":

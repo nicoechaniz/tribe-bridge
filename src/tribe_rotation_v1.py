@@ -18,7 +18,7 @@ import stat
 import tempfile
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ed25519, x25519
@@ -31,8 +31,6 @@ from tribe_directory_v1 import (
     b64url_decode,
     directory_preimage,
     directory_sha256,
-    load_roots,
-    strict_json,
     validate_directory,
 )
 
@@ -269,7 +267,11 @@ def verify_announcement(
         raise RotationError("announcement is bound to a different base")
     issued = _integer(value["issued_at_ms"], "issuance time", minimum=1)
     expires = _integer(value["expires_at_ms"], "expiry time", minimum=1)
-    if issued > now_ms + protocol.MAX_CLOCK_SKEW_MS or not now_ms < expires:
+    if (
+        not issued < expires
+        or issued > now_ms + protocol.MAX_CLOCK_SKEW_MS
+        or not now_ms < expires
+    ):
         raise RotationError("announcement is not currently valid")
     if expires - issued > MAX_ANNOUNCEMENT_LIFETIME_MS:
         raise RotationError("announcement lifetime exceeds seven days")
@@ -380,18 +382,23 @@ def compose_rotation(
     }
     new_key_expiry = candidate["expires_at_ms"]
     for agent in candidate["agents"]:
-        value = verified.get(agent["id"])
-        if value is None:
+        rotation = verified.get(agent["id"])
+        if rotation is None:
             continue
-        for key in agent["encryption_keys"]:
-            if key["kid"] == value["previous_encryption_kid"]:
-                key["not_after_ms"] = max(
-                    key["not_after_ms"] or 0,
-                    activation_at_ms + DEFAULT_DRAIN_MS,
-                )
+        for purpose, previous_field in (
+            ("signing_keys", "previous_signing_kid"),
+            ("encryption_keys", "previous_encryption_kid"),
+        ):
+            for key in agent[purpose]:
+                if key["kid"] == rotation[previous_field]:
+                    # The old private decryption key remains in the staged
+                    # bundle for queued pre-cut ciphertext, but neither old
+                    # public key is authorized for newly issued traffic after
+                    # the cut.
+                    key["not_after_ms"] = activation_at_ms
         agent["signing_keys"].append(
             {
-                **value["next_signing"],
+                **rotation["next_signing"],
                 "status": "active",
                 "not_before_ms": activation_at_ms,
                 "not_after_ms": new_key_expiry,
@@ -399,7 +406,7 @@ def compose_rotation(
         )
         agent["encryption_keys"].append(
             {
-                **value["next_encryption"],
+                **rotation["next_encryption"],
                 "status": "active",
                 "not_before_ms": activation_at_ms,
                 "not_after_ms": new_key_expiry,
@@ -481,7 +488,12 @@ def build_forward_recovery(
     candidate["directory_epoch"] += 1
     candidate["previous_sha256"] = directory_sha256(signed_rotation)
     candidate["issued_at_ms"] = now_ms
-    candidate["expires_at_ms"] = now_ms + validity_days * MS_PER_DAY
+    requested_expiry = now_ms + validity_days * MS_PER_DAY
+    candidate["expires_at_ms"] = min(
+        requested_expiry, signed_rotation["expires_at_ms"]
+    )
+    if candidate["expires_at_ms"] <= now_ms:
+        raise RotationError("forward recovery has no remaining validity")
     candidate["governance"] = {
         "threshold": signed_rotation["governance"]["threshold"],
         "signatures": [],
@@ -499,11 +511,14 @@ def build_forward_recovery(
             if not any(
                 key["status"] == "active"
                 and key["not_before_ms"] <= now_ms
-                and (key["not_after_ms"] is None or now_ms < key["not_after_ms"])
+                and (
+                    key["not_after_ms"] is None
+                    or candidate["expires_at_ms"] <= key["not_after_ms"]
+                )
                 for key in agent[purpose]
             ):
                 raise RotationError(
-                    f"forward recovery strands {agent['id']} {purpose}"
+                    f"forward recovery lacks {agent['id']} {purpose} coverage"
                 )
     protocol.canonical_json(candidate)
     return candidate
@@ -515,46 +530,31 @@ def activate_staged_bundle(
     directory: Directory,
     *,
     now_ms: int,
+    fault_hook: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Atomically activate a locally staged successor; safe to retry."""
     current_path = Path(current_bundle_path)
     staged_path = Path(staged_bundle_path)
-    for path in (current_path, staged_path):
-        info = path.lstat()
-        if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
-            raise RotationError("rotation bundles must be regular files")
-    current = KeyBundle.load(current_path)
-    staged = KeyBundle.load(staged_path)
-    if current.agent_id != staged.agent_id:
-        raise RotationError("staged bundle belongs to another agent")
-    if current.signing_kid == staged.signing_kid:
-        if current_path.read_bytes() != staged_path.read_bytes():
-            raise RotationError("same successor key ID has different private material")
-        return {
-            "activated": False,
-            "reason": "already-current",
-            "agent_id": current.agent_id,
-            "signing_kid": current.signing_kid,
-        }
-    if not set(current.encryption_private) <= set(staged.encryption_private):
-        raise RotationError("staged bundle drops encryption keys before drain")
-    for kid, private in current.encryption_private.items():
-        if (
-            private.private_bytes_raw()
-            != staged.encryption_private[kid].private_bytes_raw()
-        ):
-            raise RotationError("staged bundle substitutes retained private material")
-    staged.verify_against(directory, now_ms)
-
     lock_path = current_path.with_name(current_path.name + ".rotation.lock")
-    lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+    lock_fd = os.open(
+        lock_path,
+        os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
+    )
     try:
+        _validate_private_descriptor(lock_fd, lock_path)
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
-        # Reload inside the lock.  A completed concurrent activation is a
-        # byte-exact idempotent success; any other drift fails closed.
-        locked = KeyBundle.load(current_path)
-        if locked.signing_kid == staged.signing_kid:
-            if current_path.read_bytes() != staged_path.read_bytes():
+        # Inspect and open only after the lock.  Each bundle is read exactly
+        # once from an O_NOFOLLOW descriptor; parsing, verification and the
+        # eventual copy all consume those same immutable byte strings.
+        current_bytes, current_stat = _read_private_regular(current_path)
+        staged_bytes, _ = _read_private_regular(staged_path)
+        current = KeyBundle.from_bytes(current_bytes)
+        staged = KeyBundle.from_bytes(staged_bytes)
+        if current.agent_id != staged.agent_id:
+            raise RotationError("staged bundle belongs to another agent")
+        if current.signing_kid == staged.signing_kid:
+            if current_bytes != staged_bytes:
                 raise RotationError("activated bundle differs from staged bundle")
             return {
                 "activated": False,
@@ -562,15 +562,25 @@ def activate_staged_bundle(
                 "agent_id": staged.agent_id,
                 "signing_kid": staged.signing_kid,
             }
-        if locked.signing_kid != current.signing_kid:
-            raise RotationError("current bundle changed during activation")
+        if not set(current.encryption_private) <= set(staged.encryption_private):
+            raise RotationError("staged bundle drops encryption keys before drain")
+        for kid, private in current.encryption_private.items():
+            if (
+                private.private_bytes_raw()
+                != staged.encryption_private[kid].private_bytes_raw()
+            ):
+                raise RotationError(
+                    "staged bundle substitutes retained private material"
+                )
+        staged.verify_against(directory, now_ms)
         backup = current_path.with_name(
             f"{current_path.name}.pre-{staged.signing_kid.replace('/', '_')}"
         )
         try:
-            os.link(current_path, backup)
+            _write_exclusive(backup, current_bytes, 0o600)
         except FileExistsError:
-            if backup.read_bytes() != current_path.read_bytes():
+            backup_bytes, _ = _read_private_regular(backup)
+            if backup_bytes != current_bytes:
                 raise RotationError("activation backup conflicts with current bundle")
         descriptor, name = tempfile.mkstemp(
             dir=current_path.parent, prefix=f".{current_path.name}.", suffix=".tmp"
@@ -579,9 +589,12 @@ def activate_staged_bundle(
         try:
             os.fchmod(descriptor, 0o600)
             with os.fdopen(descriptor, "wb") as handle:
-                handle.write(staged_path.read_bytes())
+                handle.write(staged_bytes)
                 handle.flush()
                 os.fsync(handle.fileno())
+            if fault_hook:
+                fault_hook("before-commit")
+            _assert_same_regular(current_path, current_stat)
             os.replace(temporary, current_path)
             directory_fd = os.open(current_path.parent, os.O_RDONLY)
             try:
@@ -601,3 +614,62 @@ def activate_staged_bundle(
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         os.close(lock_fd)
+
+
+def _validate_private_descriptor(descriptor: int, path: Path) -> os.stat_result:
+    info = os.fstat(descriptor)
+    if not stat.S_ISREG(info.st_mode):
+        raise RotationError(f"rotation file is not regular: {path.name}")
+    if info.st_uid != os.geteuid():
+        raise RotationError(f"rotation file has wrong owner: {path.name}")
+    if stat.S_IMODE(info.st_mode) & 0o077:
+        raise RotationError(f"rotation file is not owner-only: {path.name}")
+    return info
+
+
+def _read_private_regular(path: Path) -> tuple[bytes, os.stat_result]:
+    before = path.lstat()
+    if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+        raise RotationError(f"rotation file is not regular: {path.name}")
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = _validate_private_descriptor(descriptor, path)
+        if (before.st_dev, before.st_ino) != (opened.st_dev, opened.st_ino):
+            raise RotationError(f"rotation file changed while opening: {path.name}")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            payload = handle.read(64 * 1024 + 1)
+        after = os.fstat(descriptor)
+        if len(payload) > 64 * 1024 or (
+            opened.st_size,
+            opened.st_mtime_ns,
+            opened.st_ctime_ns,
+        ) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+            raise RotationError(f"rotation file changed while reading: {path.name}")
+        return payload, after
+    finally:
+        os.close(descriptor)
+
+
+def _assert_same_regular(path: Path, expected: os.stat_result) -> None:
+    current = path.lstat()
+    if (
+        stat.S_ISLNK(current.st_mode)
+        or not stat.S_ISREG(current.st_mode)
+        or current.st_uid != os.geteuid()
+        or stat.S_IMODE(current.st_mode) & 0o077
+        or (
+            current.st_dev,
+            current.st_ino,
+            current.st_size,
+            current.st_mtime_ns,
+            current.st_ctime_ns,
+        )
+        != (
+            expected.st_dev,
+            expected.st_ino,
+            expected.st_size,
+            expected.st_mtime_ns,
+            expected.st_ctime_ns,
+        )
+    ):
+        raise RotationError("current bundle changed during activation")

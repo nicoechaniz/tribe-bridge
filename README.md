@@ -68,7 +68,7 @@ was offline or while a sender crashed around an ambiguous response.
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.10 through 3.13 (the complete CI matrix)
 - `cryptography>=49.0.0` for native RFC 9180 HPKE
 - SQLite 3.51.3+ (or fixed 3.44.6/3.50.7 backport) before enabling WAL
 

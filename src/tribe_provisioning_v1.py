@@ -8,7 +8,6 @@ anti-rollback high-water mark and uses a restartable journal.
 
 from __future__ import annotations
 
-import copy
 import fcntl
 import json
 import os
@@ -30,10 +29,8 @@ import tribe_protocol_v1 as protocol
 from tribe_crypto_v1 import KeyBundle, b64url
 from tribe_directory_v1 import (
     Directory,
-    DirectoryError,
     b64url_decode,
     directory_sha256,
-    load_roots,
     strict_json,
     validate_directory,
 )
@@ -45,6 +42,7 @@ AUTHORITY_SCHEMA = "tribe-provisioning-authority/v1"
 PRIVATE_AUTHORITY_SCHEMA = "tribe-provisioning-private/v1"
 STATE_SCHEMA = "tribe-directory-state/v1"
 JOURNAL_SCHEMA = "tribe-provisioning-journal/v1"
+HIGH_WATER_SCHEMA = "tribe-provisioning-high-water/v1"
 MAX_MANIFEST_LIFETIME_MS = 7 * 86_400_000
 MAX_ARTIFACT_BYTES = 1024 * 1024
 
@@ -76,6 +74,14 @@ STATE_FIELDS = {
     "directory_epoch",
     "directory_sha256",
     "roots_sha256",
+}
+HIGH_WATER_FIELDS = {
+    "schema",
+    "target_agent_id",
+    "directory_epoch",
+    "directory_sha256",
+    "roots_sha256",
+    "package_sha256",
 }
 
 
@@ -403,7 +409,11 @@ def verify_package(
         raise ProvisioningError("invalid provisioning manifest signature") from exc
     created = _integer(manifest["created_at_ms"], "creation time", minimum=1)
     expires = _integer(manifest["expires_at_ms"], "expiry time", minimum=1)
-    if created > now_ms + protocol.MAX_CLOCK_SKEW_MS or not now_ms < expires:
+    if (
+        not created < expires
+        or created > now_ms + protocol.MAX_CLOCK_SKEW_MS
+        or not now_ms < expires
+    ):
         raise ProvisioningError("provisioning manifest is not currently valid")
     if expires - created > MAX_MANIFEST_LIFETIME_MS:
         raise ProvisioningError("provisioning manifest lifetime exceeds seven days")
@@ -550,6 +560,7 @@ def apply_package(
     state_path = state_dir / f"{agent_slug}-directory-state.json"
     environment_path = destination / f"{agent_slug}.client.env"
     journal_path = destination / "provision-journal.json"
+    high_water_path = destination / "provision-high-water.json"
     lock_fd = os.open(destination / ".provision.lock", os.O_RDWR | os.O_CREAT, 0o600)
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
@@ -564,6 +575,50 @@ def apply_package(
             journal = strict_json(_regular_file(journal_path, private=True))
             if journal != expected_journal:
                 raise ProvisioningError("another provisioning transaction is unfinished")
+
+        target_high_water = {
+            "schema": HIGH_WATER_SCHEMA,
+            "target_agent_id": manifest["agent_id"],
+            "directory_epoch": manifest["directory_epoch"],
+            "directory_sha256": manifest["directory_sha256"],
+            "roots_sha256": manifest["roots_sha256"],
+            "package_sha256": package_hash,
+        }
+        previous_high_water = None
+        if high_water_path.exists():
+            previous_high_water = strict_json(
+                _regular_file(high_water_path, private=True)
+            )
+            _exact(
+                previous_high_water,
+                HIGH_WATER_FIELDS,
+                "provisioning high-water",
+            )
+            if previous_high_water["schema"] != HIGH_WATER_SCHEMA:
+                raise ProvisioningError("unsupported provisioning high-water")
+            if previous_high_water["target_agent_id"] != manifest["agent_id"]:
+                raise ProvisioningError("provisioning target identity changed")
+            previous_epoch = _integer(
+                previous_high_water["directory_epoch"],
+                "high-water directory epoch",
+                minimum=1,
+            )
+            if previous_epoch > manifest["directory_epoch"]:
+                raise ProvisioningError("provisioning package rollback rejected")
+            if previous_epoch == manifest["directory_epoch"]:
+                if previous_high_water != target_high_water:
+                    raise ProvisioningError(
+                        "provisioning package conflicts at the high-water epoch"
+                    )
+            elif previous_epoch + 1 != manifest["directory_epoch"]:
+                raise ProvisioningError("provisioning high-water discontinuity")
+        elif not journal_path.exists() and any(
+            path.exists()
+            for path in (directory_path, roots_path, state_path, environment_path)
+        ):
+            raise ProvisioningError(
+                "existing target lacks a durable provisioning high-water"
+            )
 
         if roots_path.exists():
             if _regular_file(roots_path) != _serialize(roots) and strict_json(roots_path.read_bytes()) != roots:
@@ -616,6 +671,15 @@ def apply_package(
             _write_atomic(environment_path, environment, 0o600)
         if fault_hook:
             fault_hook("environment-installed")
+        if (
+            previous_high_water != target_high_water
+            or not high_water_path.exists()
+        ):
+            _write_atomic(
+                high_water_path, _serialize(target_high_water), 0o600
+            )
+        if fault_hook:
+            fault_hook("high-water-installed")
         journal_path.unlink()
         directory_fd = os.open(destination, os.O_RDONLY)
         try:
@@ -635,6 +699,7 @@ def apply_package(
             "network_access": False,
             "ssh_access": False,
             "contains_private_material": False,
+            "package_sha256": package_hash,
         }
         return receipt
     finally:

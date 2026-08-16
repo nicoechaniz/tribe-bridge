@@ -76,17 +76,9 @@ class KeyBundle:
     encryption_private: dict[str, x25519.X25519PrivateKey]
 
     @classmethod
-    def load(cls, path: Path | str) -> "KeyBundle":
-        path = Path(path)
-        stat = path.stat()
-        mode = stat.st_mode & 0o777
-        if stat.st_uid != os.getuid():
-            raise PermissionError(f"private key bundle has wrong owner: {path}")
-        if mode & 0o077:
-            raise PermissionError(
-                f"private key bundle must not be group/world accessible: {path}"
-            )
-        value = strict_json(path.read_bytes(), max_bytes=64 * 1024)
+    def from_bytes(cls, payload: bytes) -> "KeyBundle":
+        """Parse one already-authenticated private bundle byte string."""
+        value = strict_json(payload, max_bytes=64 * 1024)
         if not isinstance(value, dict) or set(value) != KEY_BUNDLE_FIELDS:
             raise ValueError("invalid key bundle fields")
         if value["schema"] != "tribe-key-bundle/v1":
@@ -131,6 +123,19 @@ class KeyBundle:
             signing_private=signing_private,
             encryption_private=encryption_private,
         )
+
+    @classmethod
+    def load(cls, path: Path | str) -> "KeyBundle":
+        path = Path(path)
+        file_stat = path.stat()
+        mode = file_stat.st_mode & 0o777
+        if file_stat.st_uid != os.getuid():
+            raise PermissionError(f"private key bundle has wrong owner: {path}")
+        if mode & 0o077:
+            raise PermissionError(
+                f"private key bundle must not be group/world accessible: {path}"
+            )
+        return cls.from_bytes(path.read_bytes())
 
     def verify_against(self, directory: Directory, now_ms: int) -> None:
         signing = directory.signing_keys.get(self.signing_kid)
@@ -232,7 +237,10 @@ def _validate_typed_payload(payload: Any, envelope: dict[str, Any]) -> dict[str,
     if not isinstance(payload, dict):
         raise protocol.ProtocolError("invalid_plaintext")
     schema = payload.get("schema")
-    if CONTENT_TYPES.get(schema) != envelope["content_type"]:
+    if (
+        not isinstance(schema, str)
+        or CONTENT_TYPES.get(schema) != envelope["content_type"]
+    ):
         raise protocol.ProtocolError("invalid_plaintext")
     if payload.get("from") != envelope["sender"]["id"] or payload.get("to") != envelope["audience"]["id"]:
         raise protocol.ProtocolError("invalid_plaintext")
@@ -275,7 +283,7 @@ def encrypt_envelope(
         raise ValueError("payload sender/target does not match envelope")
 
     active_signing = directory.active_key(keys.agent_id, "signing", now)
-    envelope = {
+    envelope: dict[str, Any] = {
         "protocol": protocol.PROTOCOL,
         "version": protocol.VERSION,
         "message_id": message_id or uuid7(now),
