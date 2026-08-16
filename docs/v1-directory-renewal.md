@@ -1,65 +1,166 @@
-# Tribe v1 directory renewal and client auto-update
+# Tribe v1 rotation, forward recovery and zero-SSH provisioning
 
-The signed v1 directory has a finite validity (30 days since epoch 5). These
-two jobs keep the channel alive without human ceremony:
+Status: release-candidate tooling for local/synthetic rehearsal only. Nothing
+in this runbook authorizes live custody, signing, publication, installation,
+participant contact, network probes, service changes or remote access.
 
-- **Renewal (one host, holds the governance working copy)** —
-  `scripts/renew_directory_v1.py` signs epoch N+1 when the installed directory
-  is within the renewal window (default 7 days), verifies the chain against
-  every local client state, installs atomically with backup, publishes the
-  artifact to the `directory-live` branch, and copies it to the hub.
-- **Client update (every remote self-custody host)** —
-  `scripts/update_directory_client_v1.py` fetches the canonical signed
-  directory from the stable raw URL, verifies signature/chain/expiry fail
-  closed, and installs it atomically. Idempotent; silent when current.
+## Expiry boundary
 
-Neither touches agents, audiences, or keys. Key rotation (all agent keys
-expire 2026-09-01) is a separate ceremony — see issue #59.
+The preserved epoch-5 artifact had staggered key expiry:
 
-## Renewal host setup (legion)
+| Principals | first signing/encryption expiry (UTC) |
+|---|---|
+| `compaii`, `codex@localhost`, `mirror` | 2026-08-30 07:13:52 |
+| `claude-code@localhost` | 2026-08-30 23:27:57 |
+| `compaii@daimonmatrix`, `daimon`, `oliva` | 2026-08-31 23:33:31 |
+| `eko@amapola` | 2026-09-01 03:29:46 |
+| `oliva@mac-mini` | 2026-09-01 09:27:00 |
+
+Epoch 5 itself expired later, on 2026-09-08 03:18:53 UTC. Pure validity
+renewal cannot repair an expiring agent key. Any hypothetical live rotation
+needed to converge by 2026-08-27 UTC to preserve margin before the first
+2026-08-30 expiry. These are planning facts, not authority to act.
+
+## Rotation contract
+
+The ceremony is intentionally split so no composer holds participant keys:
+
+1. Each holder locally runs `rotate_keys_v1.py prepare` against the exact same
+   signed base directory and roots. It creates an owner-only staged bundle by
+   exclusive create and emits only a public announcement.
+2. The announcement is signed by that agent's current signing key and binds the
+   ceremony ID, base epoch/hash, roots hash, previous and next KIDs/public keys,
+   activation time, expiry and a random nonce. The carrier is not authority.
+3. `rotate_keys_v1.py compose` requires exactly one valid, non-replayed
+   announcement for every active agent. It has no private-key input and emits
+   deterministic unsigned D+1 plus a redacted receipt.
+4. D+1 gives new keys a common future `not_before_ms`, retains old key validity
+   for the drain, retires every active audience predecessor and adds an
+   identical active successor at the next audience epoch.
+5. Independent governance holders append their signatures one at a time with
+   `sign_directory_v1.py`. The configured threshold is verified by normal
+   directory loading. The aggregator never receives all private keys.
+6. After the signed successor is independently distributed and accepted,
+   `rotate_keys_v1.py activate` atomically installs the local staged bundle. It
+   refuses to drop or substitute old encryption keys and is safe to retry.
+7. Keep old encryption custody for at least the 48-hour maximum envelope TTL
+   plus buffer (the synthetic policy uses 72 hours). Pruning is a later,
+   separately authorized local action.
+
+Representative synthetic invocation (all paths must point to disposable
+fixtures):
 
 ```bash
-# publishing clone on the directory-live branch (one time)
-git clone --branch directory-live --single-branch \
-  git@github.com:nicoechaniz/tribe-bridge.git ~/Projects/tribe-bridge-directory-live
+python3 scripts/rotate_keys_v1.py prepare \
+  --directory FIXTURE/directory.json \
+  --roots FIXTURE/governance-roots.json \
+  --state FIXTURE/agent-directory-state.json \
+  --keys FIXTURE/agent.keys.json \
+  --staged-keys FIXTURE/staging/agent.next.keys.json \
+  --announcement FIXTURE/announcements/agent.json \
+  --ceremony-id synthetic-rotation-1 \
+  --now-ms NOW_MS --activation-at-ms ACTIVATION_MS \
+  --expires-at-ms ANNOUNCEMENT_EXPIRY_MS
 
-cat > ~/.tribe-bridge/v1/directory-renewal.env <<'EOF'
-TRIBE_V1_RENEWAL_HUB=debian@10.10.20.69
-EOF
-
-install -m 0644 templates/tribe-directory-renewal.{service,timer} \
-  ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now tribe-directory-renewal.timer
-
-# check what it would do anytime:
-~/.tribe-bridge/v1/venv/bin/python scripts/renew_directory_v1.py --dry-run
+python3 scripts/rotate_keys_v1.py compose \
+  --directory FIXTURE/directory.json \
+  --roots FIXTURE/governance-roots.json \
+  --state FIXTURE/composer-directory-state.json \
+  --announcement FIXTURE/announcements/agent-a.json \
+  --announcement FIXTURE/announcements/agent-b.json \
+  --ceremony-id synthetic-rotation-1 \
+  --now-ms NOW_MS --activation-at-ms ACTIVATION_MS \
+  --output FIXTURE/directory-next-unsigned.json \
+  --receipt FIXTURE/compose-receipt.json
 ```
 
-The renewal script signs with
-`~/.tribe-bridge/v1-governance-offline/governance-root.json` (0600) — the same
-working copy used by the manual ceremony. Audits land in
-`~/.tribe-bridge/v1/renewals/<ts>/`; backups as `directory.json.bak-epoch<N>`.
+The output is deliberately unsigned. Signing, publishing and live activation
+are outside this command and require their own reviewed preflight.
 
-## Remote client setup (eko@amapola, oliva@mac-mini, …)
+## Forward-only failure policy
+
+- Before threshold signing, discard the candidate and local staging; D remains
+  authoritative.
+- After D+1 is signed or any anti-rollback state accepts it, never reinstall D,
+  restore an older state file, reuse KIDs/epochs or silently change roots.
+- Prebuild an unsigned forward-recovery D+2 that revokes the named D+1 keys and
+  proves every agent still has an active signing and encryption key. It also
+  requires offline threshold signing:
 
 ```bash
-cat > ~/.tribe-bridge/v1/directory-update.env <<'EOF'
-TRIBE_V1_DIRECTORY_URL=https://raw.githubusercontent.com/nicoechaniz/tribe-bridge/directory-live/governance/directories/directory-current-signed.json
-TRIBE_V1_DIRECTORY_STATE=/home/USERNAME/.tribe-bridge/v1/<agent>-directory-state.json
-EOF
-
-install -m 0644 templates/tribe-directory-update.{service,timer} \
-  ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now tribe-directory-update.timer
-
-# first run / recovery from an expired directory (also works manually):
-~/.tribe-bridge/v1/venv/bin/python scripts/update_directory_client_v1.py \
-  --url "$TRIBE_V1_DIRECTORY_URL" --state "$TRIBE_V1_DIRECTORY_STATE"
+python3 scripts/rotate_keys_v1.py forward-recovery \
+  --directory FIXTURE/directory-next-signed.json \
+  --roots FIXTURE/governance-roots.json \
+  --state FIXTURE/recovery-directory-state.json \
+  --now-ms RECOVERY_MS \
+  --revoke-kid agent/sig/2 --revoke-kid agent/enc/2 \
+  --output FIXTURE/directory-forward-recovery-unsigned.json
 ```
 
-The script prints a JSON summary on change or failure and stays silent when
-already current (cron-friendly). A failed verification never mutates the
-installed file, so an agent with an expired directory recovers by running it
-manually once — no human relay needed anymore.
+## Zero-SSH provisioning contract
+
+Provisioning binds an already authorized signed directory to private material
+which already exists on the client. It cannot enroll or generate participant
+keys, sign a directory, rotate governance roots, widen `@localhost`, install a
+service, contact a broker, or produce a Matrix receipt.
+
+A package contains only:
+
+- the signed directory and governance public roots;
+- their exact hashes and epoch;
+- expected public KIDs and required active audiences;
+- HTTP(S) routes/inbox endpoints as deployment hints, never authorization;
+- an explicit locality set, exact build commit and bounded validity;
+- a signature by a separately pinned provisioning authority.
+
+Apply checks the authority, every hash, directory signature/expiry, local
+owner-only key bundle, direct/group membership, exact harness-approved locality
+set, roots continuity and anti-rollback state. It installs directory before the
+high-water state under a restartable journal, so a crash can only leave D or a
+resumable D+1 transition. Invalid rollback/root/split-view attempts mutate
+nothing and leave no journal.
+
+```bash
+# Synthetic authority; never treat this test key as live governance.
+python3 scripts/provision_v1.py authority-create \
+  --kid synthetic/provisioner/1 \
+  --private-output FIXTURE/provisioner-private.json \
+  --public-output FIXTURE/provisioner-public.json
+
+python3 scripts/provision_v1.py build \
+  --directory FIXTURE/directory.json \
+  --roots FIXTURE/governance-roots.json \
+  --private-authority FIXTURE/provisioner-private.json \
+  --config FIXTURE/client-public-config.json \
+  --package FIXTURE/package \
+  --provisioning-id synthetic-client-1 --agent-id agent \
+  --build-commit EXACT_40_HEX_COMMIT \
+  --now-ms NOW_MS --expires-at-ms EXPIRY_MS
+
+python3 scripts/provision_v1.py apply \
+  --package FIXTURE/package \
+  --authority FIXTURE/provisioner-public.json \
+  --keys FIXTURE/agent.keys.json \
+  --destination FIXTURE/client \
+  --local-agent-id agent \
+  --now-ms NOW_MS
+
+python3 scripts/provision_v1.py doctor \
+  --destination FIXTURE/client \
+  --keys FIXTURE/agent.keys.json --agent-id agent --now-ms NOW_MS
+```
+
+`doctor` is local-only. `network_checked: false` and `matrix_receipt: false`
+are intentional: reachability, authenticated Tribe round-trip and Matrix
+semantic intake are distinct later gates.
+
+## Pure-validity fixture and remote update
+
+`renew_directory_v1.py` is retained only as an explicitly named synthetic
+single-holder local fixture. It has no publish, service, network or remote
+install options. It cannot solve key expiry and is not a release ceremony.
+
+`update_directory_client_v1.py` remains a fail-closed HTTP(S) fetch/verify/apply
+primitive. Its templates are packaging assets only; this release candidate
+does not install or enable them. A real canonical URL, authority, deployment
+target and activation are separate operator choices.
