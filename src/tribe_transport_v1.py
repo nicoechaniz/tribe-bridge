@@ -114,7 +114,8 @@ def validate_request(
         if not isinstance(auth[field], int) or isinstance(auth[field], bool):
             raise protocol.ProtocolError("malformed_request")
     if (
-        auth["expires_at_ms"] <= now_ms
+        not auth["issued_at_ms"] < auth["expires_at_ms"]
+        or auth["expires_at_ms"] <= now_ms
         or auth["issued_at_ms"] > now_ms + protocol.MAX_CLOCK_SKEW_MS
         or auth["expires_at_ms"] - auth["issued_at_ms"] > MAX_AUTH_TTL_MS
     ):

@@ -208,16 +208,17 @@ def load_roots(path: Path | str) -> dict[str, Any]:
     return roots
 
 
-def validate_directory(
+def _validate_directory(
     snapshot: Any,
     roots: dict[str, Any],
     *,
     now_ms: int,
+    require_governance_signatures: bool,
 ) -> dict[str, Any]:
     snapshot = _exact(snapshot, TOP_FIELDS, "directory")
     if snapshot["schema"] != "tribe-directory/v1":
         raise DirectoryError("unsupported directory schema")
-    epoch = _integer(snapshot["directory_epoch"], minimum=1)
+    _integer(snapshot["directory_epoch"], minimum=1)
     issued = _integer(snapshot["issued_at_ms"])
     expires = _integer(snapshot["expires_at_ms"], minimum=1)
     if (
@@ -242,6 +243,8 @@ def validate_directory(
     signatures = governance["signatures"]
     if not isinstance(signatures, list):
         raise DirectoryError("invalid governance signatures")
+    if not require_governance_signatures and signatures:
+        raise DirectoryError("unsigned candidate contains governance signatures")
     valid_signers = set()
     preimage = directory_preimage(snapshot)
     for signature in signatures:
@@ -262,7 +265,10 @@ def validate_directory(
         except InvalidSignature as exc:
             raise DirectoryError("invalid governance signature") from exc
         valid_signers.add(kid)
-    if len(valid_signers) < roots["threshold"]:
+    if (
+        require_governance_signatures
+        and len(valid_signers) < roots["threshold"]
+    ):
         raise DirectoryError("governance signature threshold not met")
 
     agents = snapshot["agents"]
@@ -381,6 +387,40 @@ def validate_directory(
             )
     protocol.canonical_json(snapshot)
     return snapshot
+
+
+def validate_directory(
+    snapshot: Any,
+    roots: dict[str, Any],
+    *,
+    now_ms: int,
+) -> dict[str, Any]:
+    """Validate a signed directory as runtime authority."""
+    return _validate_directory(
+        snapshot,
+        roots,
+        now_ms=now_ms,
+        require_governance_signatures=True,
+    )
+
+
+def validate_unsigned_directory_candidate(
+    snapshot: Any,
+    roots: dict[str, Any],
+    *,
+    now_ms: int,
+) -> dict[str, Any]:
+    """Validate all semantics of a keyless, explicitly unsigned candidate.
+
+    This never establishes authority.  Runtime consumers must use
+    ``validate_directory`` and its threshold signature verification.
+    """
+    return _validate_directory(
+        snapshot,
+        roots,
+        now_ms=now_ms,
+        require_governance_signatures=False,
+    )
 
 
 def _write_state(path: Path, state: dict[str, Any]) -> None:

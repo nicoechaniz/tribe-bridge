@@ -29,9 +29,9 @@ from tribe_directory_v1 import (
     Directory,
     DirectoryError,
     b64url_decode,
-    directory_preimage,
     directory_sha256,
     validate_directory,
+    validate_unsigned_directory_candidate,
 )
 
 
@@ -41,6 +41,7 @@ RECEIPT_SCHEMA = "tribe-key-rotation-compose-receipt/v1"
 MS_PER_DAY = 86_400_000
 MAX_ANNOUNCEMENT_LIFETIME_MS = 7 * MS_PER_DAY
 DEFAULT_DRAIN_MS = 72 * 60 * 60 * 1000
+ROTATION_VALIDITY_DAYS = 30
 
 ANNOUNCEMENT_FIELDS = {
     "schema",
@@ -178,7 +179,8 @@ def prepare_rotation(
     )
     signing_kid = f"{bundle.agent_id}/sig/{signing_epoch}"
     encryption_kid = f"{bundle.agent_id}/enc/{encryption_epoch}"
-    if signing_kid in directory.signing_keys or encryption_kid in directory.encryption_keys:
+    known_kids = set(directory.signing_keys) | set(directory.encryption_keys)
+    if signing_kid in known_kids or encryption_kid in known_kids:
         raise RotationError("successor key ID collides with the base directory")
 
     next_signing = ed25519.Ed25519PrivateKey.generate()
@@ -303,21 +305,17 @@ def verify_announcement(
     expected_encryption_epoch = (
         max(key["epoch"] for key in agent["encryption_keys"]) + 1
     )
+    known_kids = set(directory.signing_keys) | set(directory.encryption_keys)
     expectations = (
-        (next_signing, expected_signing_epoch, "sig", directory.signing_keys),
-        (
-            next_encryption,
-            expected_encryption_epoch,
-            "enc",
-            directory.encryption_keys,
-        ),
+        (next_signing, expected_signing_epoch, "sig"),
+        (next_encryption, expected_encryption_epoch, "enc"),
     )
-    for key, expected_epoch, purpose, known in expectations:
+    for key, expected_epoch, purpose in expectations:
         kid = _identifier(key["kid"], "successor key ID")
         if (
             key["epoch"] != expected_epoch
             or kid != f"{agent_id}/{purpose}/{expected_epoch}"
-            or kid in known
+            or kid in known_kids
         ):
             raise RotationError("non-monotonic or colliding successor key")
         b64url_decode(key["public_key"], 32)
@@ -342,11 +340,8 @@ def compose_rotation(
     now_ms: int,
     ceremony_id: str,
     activation_at_ms: int,
-    validity_days: int = 30,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Build deterministic unsigned D+1 from a complete announcement set."""
-    if validity_days < 4:
-        raise RotationError("successor validity must cover activation and drain")
+    """Build one content-addressed D+1 from an exact announcement set."""
     active_agents = sorted(
         agent["id"] for agent in snapshot["agents"] if agent["status"] == "active"
     )
@@ -372,8 +367,16 @@ def compose_rotation(
     candidate = copy.deepcopy(snapshot)
     candidate["directory_epoch"] = snapshot["directory_epoch"] + 1
     candidate["previous_sha256"] = directory_sha256(snapshot)
-    candidate["issued_at_ms"] = now_ms
-    candidate["expires_at_ms"] = now_ms + validity_days * MS_PER_DAY
+    # Composition time is verification context, not candidate content.  The
+    # exact signed announcement set therefore produces identical bytes across
+    # processes, retries, ordering, and later (still-valid) compose times.
+    candidate_issued_at_ms = max(
+        value["issued_at_ms"] for value in verified.values()
+    )
+    candidate["issued_at_ms"] = candidate_issued_at_ms
+    candidate["expires_at_ms"] = (
+        candidate_issued_at_ms + ROTATION_VALIDITY_DAYS * MS_PER_DAY
+    )
     if candidate["expires_at_ms"] <= activation_at_ms + DEFAULT_DRAIN_MS:
         raise RotationError("successor expires before the rotation drain completes")
     candidate["governance"] = {
@@ -433,14 +436,31 @@ def compose_rotation(
         successor.pop("legacy_unobserved_receive", None)
         candidate["audiences"].append(successor)
 
-    # Schema/semantic validation before the keyless composer emits anything.
-    unsigned_roots = copy.deepcopy(roots)
-    # validate_directory requires threshold signatures; sign only in memory
-    # with no authority is impossible, so validate every closed structural
-    # rule by using the validator after callers append the offline threshold.
-    # The deterministic preimage itself is still checked here.
-    protocol.canonical_json(candidate)
-    directory_preimage(candidate)
+    # Validate every closed structural and semantic rule before emitting the
+    # candidate.  This explicitly unsigned validation never grants runtime
+    # authority; the normal loader still requires the governance threshold.
+    try:
+        validate_unsigned_directory_candidate(candidate, roots, now_ms=now_ms)
+    except DirectoryError as exc:
+        raise RotationError("rotation candidate is semantically invalid") from exc
+
+    announcement_hashes = [
+        sha256(protocol.canonical_json(verified[agent])).hexdigest()
+        for agent in active_agents
+    ]
+    ceremony_descriptor = {
+        "schema": "tribe-key-rotation-ceremony/v1",
+        "ceremony_id": ceremony_id,
+        "base_directory_epoch": snapshot["directory_epoch"],
+        "base_directory_sha256": directory_sha256(snapshot),
+        "roots_sha256": roots_sha256(roots),
+        "activation_at_ms": activation_at_ms,
+        "validity_days": ROTATION_VALIDITY_DAYS,
+        "announcement_sha256": announcement_hashes,
+    }
+    ceremony_sha256 = sha256(
+        protocol.canonical_json(ceremony_descriptor)
+    ).hexdigest()
     receipt = {
         "schema": RECEIPT_SCHEMA,
         "ceremony_id": ceremony_id,
@@ -448,13 +468,11 @@ def compose_rotation(
         "base_directory_sha256": directory_sha256(snapshot),
         "candidate_directory_epoch": candidate["directory_epoch"],
         "candidate_unsigned_sha256": directory_sha256(candidate),
-        "roots_sha256": roots_sha256(unsigned_roots),
+        "roots_sha256": roots_sha256(roots),
         "activation_at_ms": activation_at_ms,
+        "ceremony_sha256": ceremony_sha256,
         "agent_ids": active_agents,
-        "announcement_sha256": [
-            sha256(protocol.canonical_json(verified[agent])).hexdigest()
-            for agent in active_agents
-        ],
+        "announcement_sha256": announcement_hashes,
         "audience_successors": len(newest_active),
         "contains_private_material": False,
     }
