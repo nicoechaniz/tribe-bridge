@@ -1,18 +1,18 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-16T17:26:40Z",
+  "generated_at": "2026-08-16T17:39:41Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "f5e5751bccf76651b0379500cbc8b86f22748d6d1fe42d46d464fabe3826b552"
+    "sha256": "2781134110d20b43d0d4bbf8a096fc6dfc3fef8bc547fb0ab9a4f06b506205f5"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
     "pull_request": 65,
     "issue": 64,
-    "commit": "b1a2ed855bcd1f78a5e54172b52bf939074151b6",
-    "tree": "ed2bac55a6d8b17308ee692860e8ca6f24aa7f4f",
+    "commit": "cd54865733c0b0200924dcd39213b7fcd7eb12ec",
+    "tree": "7052ca5672fb56a14b826382f468fb38e19c50f0",
     "reviewed_pre_cleanup_commit": "7b9acda839423aa21afceae22abcd47008bbeba6",
     "reviewed_pre_cleanup_tree": "e443706cf191ab31d93252a128ed04530f6da39f"
   },
@@ -24,26 +24,33 @@
   },
   "archive": {
     "format": "git-archive-tar",
-    "prefix": "tribe-bridge-b1a2ed855bcd/",
-    "command": "git archive --format=tar --prefix=tribe-bridge-b1a2ed855bcd/ --output=tribe-bridge-b1a2ed855bcd.tar b1a2ed855bcd1f78a5e54172b52bf939074151b6",
-    "bytes": 757760,
-    "sha256": "84a0f1bb068b12df48884fee28a3f8fac48f3fbb9aa36d0e42dbd4f51b08714d",
+    "prefix": "tribe-bridge-cd54865733c/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-cd54865733c/ --output=tribe-bridge-cd54865733c-source.tar cd54865733c0b0200924dcd39213b7fcd7eb12ec -- . ':(exclude)docs/release-candidate-receipt.json'",
+    "bytes": 768000,
+    "sha256": "d1e664ec5eef70fde262bfbd1a44dcea340675449db333563aa6230da26f15cb",
     "receipt_in_archive": false,
-    "receipt_note": "This receipt records the exact qualified source commit and is committed separately, avoiding a self-referential archive hash."
+    "receipt_note": "The archive excludes this path so it cannot contain a stale predecessor receipt or create a self-referential archive hash."
   },
   "requirements": {
     "path": "protocol/v1/requirements-test.txt",
-    "bytes": 21,
-    "sha256": "a150422ed6f366c9a13cc4fb218ae572040f4009a21d01582820b830e2758428",
-    "resolved_cryptography": "50.0.0"
+    "bytes": 225,
+    "sha256": "706cfcb4ce5e325c8506bf82b4ce2b4199ad4e9a4e0d588eaa552017d974e07b",
+    "locked_direct_and_transitive": true,
+    "install_command": "uv pip sync --python <fresh-venv>/bin/python --offline protocol/v1/requirements-test.txt",
+    "resolved": {
+      "3.10.20": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0", "typing-extensions==4.16.0"],
+      "3.11.15": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0"],
+      "3.12.13": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0"],
+      "3.13.14": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0"]
+    }
   },
   "suite": {
     "command": "python -W error::ResourceWarning -m unittest discover -s tests -q",
     "runs": [
-      {"python": "3.10.20", "tests": 118, "result": "pass"},
-      {"python": "3.11.15", "tests": 118, "result": "pass"},
-      {"python": "3.12.13", "tests": 118, "result": "pass"},
-      {"python": "3.13.14", "tests": 118, "result": "pass"}
+      {"python": "3.10.20", "tests": 120, "result": "pass"},
+      {"python": "3.11.15", "tests": 120, "result": "pass"},
+      {"python": "3.12.13", "tests": 120, "result": "pass"},
+      {"python": "3.13.14", "tests": 120, "result": "pass"}
     ],
     "reruns_used_as_evidence": false,
     "flakes_observed": false
@@ -55,7 +62,10 @@
       "scope": [
         "src/tribe_directory_v1.py",
         "src/tribe_rotation_v1.py",
-        "tests/test_tribe_v1_integration.py"
+        "src/tribe_provisioning_v1.py",
+        "tests/test_tribe_v1_integration.py",
+        "tests/test_key_rotation_v1.py",
+        "tests/test_provisioning_v1.py"
       ],
       "rules": "E9,F63,F7,F82",
       "result": "pass"
@@ -65,7 +75,10 @@
       "scope": [
         "src/tribe_directory_v1.py",
         "src/tribe_rotation_v1.py",
-        "tests/test_tribe_v1_integration.py"
+        "src/tribe_provisioning_v1.py",
+        "tests/test_tribe_v1_integration.py",
+        "tests/test_key_rotation_v1.py",
+        "tests/test_provisioning_v1.py"
       ],
       "options": "MYPYPATH=src --follow-imports=skip",
       "result": "pass"
