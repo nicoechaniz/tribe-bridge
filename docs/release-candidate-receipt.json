@@ -1,11 +1,11 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-16T17:39:41Z",
+  "generated_at": "2026-08-16T17:45:56Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "2781134110d20b43d0d4bbf8a096fc6dfc3fef8bc547fb0ab9a4f06b506205f5"
+    "sha256": "3c8ecad7696b526a5a19f4c4732f82bdb7b338f2256752222ccd6bcd21154f78"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
@@ -35,13 +35,26 @@
     "path": "protocol/v1/requirements-test.txt",
     "bytes": 225,
     "sha256": "706cfcb4ce5e325c8506bf82b4ce2b4199ad4e9a4e0d588eaa552017d974e07b",
-    "locked_direct_and_transitive": true,
-    "install_command": "uv pip sync --python <fresh-venv>/bin/python --offline protocol/v1/requirements-test.txt",
+    "version_pins_closed": true,
+    "version_lock_scope": "Exact Python-package versions and environment markers only; no wheel identity, binary hash or distribution provenance is asserted.",
+    "pin_resolution": {
+      "tool": "uv 0.12.0",
+      "input_ref": "parent commit 321ec9cebb1beffa843d82636b213a4d9b2b0be7, whose direct requirement was cryptography>=49.0.0",
+      "command": "uv pip compile protocol/v1/requirements-test.txt --python-version 3.10 --universal --no-header --no-annotate",
+      "method": "The universal resolver result was committed as the closed direct/transitive version set and then synchronized into one fresh virtual environment per supported interpreter from a pre-existing local cache."
+    },
     "resolved": {
       "3.10.20": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0", "typing-extensions==4.16.0"],
       "3.11.15": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0"],
       "3.12.13": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0"],
       "3.13.14": ["cffi==2.1.1", "cryptography==50.0.0", "pycparser==3.0"]
+    },
+    "distribution_artifact_gate": {
+      "wheelhouse_present": false,
+      "binary_hashes_recorded": false,
+      "distribution_provenance_recorded": false,
+      "offline_installation_asserted": false,
+      "remaining_integrated_manifest_gate": "Materialize the exact distributions for every supported interpreter/platform, record their SHA-256 hashes and provenance in the integrated RC manifest, and qualify installation from that content-addressed wheelhouse."
     }
   },
   "suite": {
