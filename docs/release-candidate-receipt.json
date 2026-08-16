@@ -1,31 +1,31 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-16T21:08:11Z",
+  "generated_at": "2026-08-16T21:51:19Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "a3d07988856886635591d6cfa60cf14940981df8e5a938d570213b102badb5ee"
+    "sha256": "2c58221e1cfece4b4085c205caae628d3ffeb3a9c3eb89440aa781ddac46e772"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
     "pull_request": 65,
     "issue": 64,
-    "commit": "e837d542470ba20d6a5ee67d8c65b2f963f8f7f5",
-    "tree": "98d569293049b0936c46c1d73386f98ac269b557"
+    "commit": "16520730e9922ed74cf5ca099d036fe29330e85d",
+    "tree": "abf2a933e1eed67049308f5beba53266f462524a"
   },
   "integrated_boundaries": {
     "matrix_merged_commit": "09414d6edd9586f539be8272c4979d0b36c86b87",
     "matrix_tree": "d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad",
-    "cluster_merged_commit": "4b77d2e47f31258d0801bd3a881b8dcf1a7584be",
-    "cluster_tree": "726159a25d6708a8388380f81f7cbec9f51122a9"
+    "cluster_merged_commit": "820e3792a227b1848681a3421b113e8822c8d08a",
+    "cluster_tree": "4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8"
   },
   "archive": {
     "format": "git-archive-tar",
-    "prefix": "tribe-bridge-e837d542470b/",
-    "command": "git archive --format=tar --prefix=tribe-bridge-e837d542470b/ --output=tribe-bridge-e837d542470b-source.tar e837d542470ba20d6a5ee67d8c65b2f963f8f7f5 -- . ':(exclude)docs/release-candidate-receipt.json'",
+    "prefix": "tribe-bridge-16520730e992/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-16520730e992/ --output=tribe-bridge-16520730e992-source.tar 16520730e9922ed74cf5ca099d036fe29330e85d -- . ':(exclude)docs/release-candidate-receipt.json'",
     "bytes": 768000,
-    "sha256": "1927b18a3e2da8f682d4956230bfd03a32809cf47fcd2dc0153051fbef9d93ba",
+    "sha256": "8b50f2219ea221e5053124696a7813984ad182d86c0eb3c4e65fc4f1d2c9a539",
     "receipt_in_archive": false,
     "receipt_note": "The archive excludes this path so it cannot contain a stale predecessor receipt or create a self-referential archive hash."
   },
