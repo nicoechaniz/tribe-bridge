@@ -1,33 +1,31 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-16T17:45:56Z",
+  "generated_at": "2026-08-16T21:08:11Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "3c8ecad7696b526a5a19f4c4732f82bdb7b338f2256752222ccd6bcd21154f78"
+    "sha256": "a3d07988856886635591d6cfa60cf14940981df8e5a938d570213b102badb5ee"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
     "pull_request": 65,
     "issue": 64,
-    "commit": "cd54865733c0b0200924dcd39213b7fcd7eb12ec",
-    "tree": "7052ca5672fb56a14b826382f468fb38e19c50f0",
-    "reviewed_pre_cleanup_commit": "7b9acda839423aa21afceae22abcd47008bbeba6",
-    "reviewed_pre_cleanup_tree": "e443706cf191ab31d93252a128ed04530f6da39f"
+    "commit": "e837d542470ba20d6a5ee67d8c65b2f963f8f7f5",
+    "tree": "98d569293049b0936c46c1d73386f98ac269b557"
   },
   "integrated_boundaries": {
-    "matrix_merged_commit": "75b34804f8d013d348129946c0cd541a4448e71d",
-    "matrix_tree": "38f3edb002ac52aac2d51fbf533cb58c38b813c5",
-    "cluster_code_commit": "93230a890ffad78aa1d10af2b68a33a45ff9845c",
-    "cluster_tree": "598f502df42408d3f6e0dc788e765461fb54081b"
+    "matrix_merged_commit": "09414d6edd9586f539be8272c4979d0b36c86b87",
+    "matrix_tree": "d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad",
+    "cluster_merged_commit": "4b77d2e47f31258d0801bd3a881b8dcf1a7584be",
+    "cluster_tree": "726159a25d6708a8388380f81f7cbec9f51122a9"
   },
   "archive": {
     "format": "git-archive-tar",
-    "prefix": "tribe-bridge-cd54865733c/",
-    "command": "git archive --format=tar --prefix=tribe-bridge-cd54865733c/ --output=tribe-bridge-cd54865733c-source.tar cd54865733c0b0200924dcd39213b7fcd7eb12ec -- . ':(exclude)docs/release-candidate-receipt.json'",
+    "prefix": "tribe-bridge-e837d542470b/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-e837d542470b/ --output=tribe-bridge-e837d542470b-source.tar e837d542470ba20d6a5ee67d8c65b2f963f8f7f5 -- . ':(exclude)docs/release-candidate-receipt.json'",
     "bytes": 768000,
-    "sha256": "d1e664ec5eef70fde262bfbd1a44dcea340675449db333563aa6230da26f15cb",
+    "sha256": "1927b18a3e2da8f682d4956230bfd03a32809cf47fcd2dc0153051fbef9d93ba",
     "receipt_in_archive": false,
     "receipt_note": "The archive excludes this path so it cannot contain a stale predecessor receipt or create a self-referential archive hash."
   },
