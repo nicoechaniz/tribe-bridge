@@ -39,7 +39,9 @@ The ceremony is intentionally split so no composer holds participant keys:
    derived from the exact announcement set rather than composer wall time, and
    the fixed 30-day validity policy is code-bound. Before output, the composer
    runs the complete directory structural/semantic validator in an explicitly
-   unsigned mode which cannot establish runtime authority.
+   unsigned mode which cannot establish runtime authority. Activation cannot
+   be later than the original expiry of either current key: composition may
+   shorten an old key window, but it never extends or revives one.
 4. D+1 gives new keys a common future `not_before_ms` and ends both old public
    key validity windows exactly at activation. Old encryption *private* keys
    remain local for the drain, but cannot authorize post-cut traffic: broker
@@ -136,6 +138,11 @@ A package contains only:
 - HTTP(S) routes/inbox endpoints as deployment hints, never authorization;
 - an explicit locality set, exact build commit and bounded validity;
 - a signature by a separately pinned provisioning authority.
+
+The package directory has a closed three-file inventory: `manifest.json`,
+`directory.json`, and `governance-roots.json`. Verification rejects an absent,
+renamed, non-regular, or additional entry before a fresh destination is
+created. The manifest's `artifacts` map binds the two payload files exactly.
 
 Apply checks the authority, every hash, directory signature/expiry, local
 owner-only key bundle, direct/group membership, exact harness-approved locality

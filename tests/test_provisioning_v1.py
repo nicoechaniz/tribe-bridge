@@ -318,6 +318,24 @@ class ProvisioningTests(unittest.TestCase):
         ):
             verify_package(package, self.public_authority, now_ms=NOW)
 
+    def test_extra_package_file_is_rejected_before_target_creation(self):
+        package = self.tmp / "package"
+        self.build(package)
+        (package / "unlisted.txt").write_text("not in the signed inventory")
+        destination = self.tmp / "must-not-exist"
+        with self.assertRaisesRegex(
+            ProvisioningError, "invalid provisioning package inventory"
+        ):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+            )
+        self.assertFalse(destination.exists())
+
     def test_next_epoch_advances_and_old_package_is_rejected(self):
         package1 = self.tmp / "package-1"
         self.build(package1)

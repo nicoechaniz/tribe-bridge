@@ -293,6 +293,64 @@ class RotationTests(unittest.TestCase):
                 activation_at_ms=self.activation,
             )
 
+    def test_activation_never_extends_a_previous_key_expiry(self):
+        late_activation = NOW + 11 * 86_400_000
+        announcements = []
+        for agent_id, path in self.material["bundles"].items():
+            announcements.append(
+                prepare_rotation(
+                    self.directory,
+                    self.material["roots"],
+                    path,
+                    self.tmp / f"late-{agent_id.replace('@', '_')}.json",
+                    ceremony_id="synthetic-late-rotation",
+                    activation_at_ms=late_activation,
+                    expires_at_ms=NOW + HOUR,
+                    now_ms=NOW,
+                )
+            )
+        with self.assertRaisesRegex(
+            RotationError, "activation exceeds a previous key expiry"
+        ):
+            compose_rotation(
+                self.material["snapshot"],
+                self.material["roots"],
+                announcements,
+                now_ms=NOW,
+                ceremony_id="synthetic-late-rotation",
+                activation_at_ms=late_activation,
+            )
+
+        exact_expiry = NOW + 10 * 86_400_000
+        exact_announcements = []
+        for agent_id, path in self.material["bundles"].items():
+            exact_announcements.append(
+                prepare_rotation(
+                    self.directory,
+                    self.material["roots"],
+                    path,
+                    self.tmp / f"exact-{agent_id.replace('@', '_')}.json",
+                    ceremony_id="synthetic-exact-expiry-rotation",
+                    activation_at_ms=exact_expiry,
+                    expires_at_ms=NOW + HOUR,
+                    now_ms=NOW,
+                )
+            )
+        candidate, _ = compose_rotation(
+            self.material["snapshot"],
+            self.material["roots"],
+            exact_announcements,
+            now_ms=NOW,
+            ceremony_id="synthetic-exact-expiry-rotation",
+            activation_at_ms=exact_expiry,
+        )
+        for agent in candidate["agents"]:
+            for purpose in ("signing_keys", "encryption_keys"):
+                previous = next(
+                    key for key in agent[purpose] if key["epoch"] == 1
+                )
+                self.assertEqual(previous["not_after_ms"], exact_expiry)
+
     def test_activation_retains_old_ciphertext_and_is_idempotent(self):
         old_sender = KeyBundle.load(self.material["bundles"]["alice"])
         queued = encrypt_envelope(
