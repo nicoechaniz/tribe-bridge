@@ -30,10 +30,16 @@ The ceremony is intentionally split so no composer holds participant keys:
    exclusive create and emits only a public announcement.
 2. The announcement is signed by that agent's current signing key and binds the
    ceremony ID, base epoch/hash, roots hash, previous and next KIDs/public keys,
-   activation time, expiry and a random nonce. The carrier is not authority.
+   activation time, expiry and a random nonce. Successor KIDs are checked
+   globally across signing and encryption purposes, including retired keys.
+   The carrier is not authority.
 3. `rotate_keys_v1.py compose` requires exactly one valid, non-replayed
    announcement for every active agent. It has no private-key input and emits
-   deterministic unsigned D+1 plus a redacted receipt.
+   deterministic unsigned D+1 plus a redacted receipt. Candidate issuance is
+   derived from the exact announcement set rather than composer wall time, and
+   the fixed 30-day validity policy is code-bound. Before output, the composer
+   runs the complete directory structural/semantic validator in an explicitly
+   unsigned mode which cannot establish runtime authority.
 4. D+1 gives new keys a common future `not_before_ms` and ends both old public
    key validity windows exactly at activation. Old encryption *private* keys
    remain local for the drain, but cannot authorize post-cut traffic: broker
@@ -83,6 +89,18 @@ python3 scripts/rotate_keys_v1.py compose \
 
 The output is deliberately unsigned. Signing, publishing and live activation
 are outside this command and require their own reviewed preflight.
+
+`ceremony_id` is a human-readable label, not a globally allocated singleton.
+The receipt's `ceremony_sha256` is the authoritative content address over the
+base, roots, activation, fixed validity policy and sorted exact announcement
+hashes (therefore their holder nonces and signatures). Reordering, restarting,
+or composing one millisecond later yields the same candidate and receipt.
+Recomposing the exact set is an idempotent replay of that content address, not a
+second ceremony. A different set under the same label has a different content
+address; governance must choose one exact candidate hash and must never sign
+two forks from the same base. Preventing malicious governance equivocation
+requires the separately gated canonical publication/transparency mechanism,
+not mutable local composer state.
 
 ## Forward-only failure policy
 

@@ -29,7 +29,11 @@ The release-candidate branch must demonstrate, entirely with disposable state:
    and signs a public announcement with its current key.
 2. A keyless composer rejects forged, stale, wrong-base, duplicate, replayed or
    partial announcement sets; advances the directory and every active audience
-   deterministically; and emits only public evidence.
+   deterministically across process restarts and verification times; globally
+   rejects successor KID reuse across signing/encryption purposes; performs
+   full unsigned semantic validation; and emits only public content-addressed
+   evidence. The human ceremony label is not authority: the exact announcement
+   set and candidate hashes are.
 3. Local activation is atomic, idempotent and retains old encryption keys for
    queued ciphertext through the bounded drain. It requires the currently
    selected signing and encryption keys even on retry, while trusted broker

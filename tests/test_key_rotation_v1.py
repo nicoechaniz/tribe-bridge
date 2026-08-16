@@ -1,6 +1,7 @@
 import copy
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,17 +20,24 @@ from tribe_crypto_v1 import (
     message_payload,
     uuid7,
 )
-from tribe_directory_v1 import Directory, DirectoryError, directory_preimage
+from tribe_directory_v1 import (
+    Directory,
+    DirectoryError,
+    directory_preimage,
+    validate_directory,
+    validate_unsigned_directory_candidate,
+)
 import tribe_protocol_v1 as protocol
 from tribe_rotation_v1 import (
     RotationError,
     activate_staged_bundle,
+    announcement_preimage,
     build_forward_recovery,
     compose_rotation,
     prepare_rotation,
     verify_announcement,
 )
-from tribe_transport_v1 import validate_request, wrap_request
+from tribe_transport_v1 import auth_preimage, validate_request, wrap_request
 from v1_fixtures import NOW, b64url, make_material, signing_key
 
 
@@ -102,6 +110,62 @@ class RotationTests(unittest.TestCase):
         second, second_receipt = self.compose()
         self.assertEqual(candidate, second)
         self.assertEqual(receipt, second_receipt)
+        later, later_receipt = compose_rotation(
+            self.material["snapshot"],
+            self.material["roots"],
+            list(reversed(self.announcements)),
+            now_ms=NOW + 1,
+            ceremony_id="synthetic-rotation-1",
+            activation_at_ms=self.activation,
+        )
+        self.assertEqual(candidate, later)
+        self.assertEqual(receipt, later_receipt)
+        self.assertEqual(len(receipt["ceremony_sha256"]), 64)
+
+        snapshot_path = self.tmp / "restart-snapshot.json"
+        roots_path = self.tmp / "restart-roots.json"
+        announcements_path = self.tmp / "restart-announcements.json"
+        snapshot_path.write_text(json.dumps(self.material["snapshot"]))
+        roots_path.write_text(json.dumps(self.material["roots"]))
+        announcements_path.write_text(json.dumps(self.announcements))
+        restart = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import json,sys;"
+                    f"sys.path.insert(0,{str(ROOT / 'src')!r});"
+                    "from tribe_rotation_v1 import compose_rotation;"
+                    "snapshot=json.load(open(sys.argv[1]));"
+                    "roots=json.load(open(sys.argv[2]));"
+                    "announcements=json.load(open(sys.argv[3]));"
+                    "result=compose_rotation(snapshot,roots,announcements,"
+                    "now_ms=int(sys.argv[4]),ceremony_id=sys.argv[5],"
+                    "activation_at_ms=int(sys.argv[6]));"
+                    "print(json.dumps(result,sort_keys=True,separators=(',',':')))"
+                ),
+                str(snapshot_path),
+                str(roots_path),
+                str(announcements_path),
+                str(NOW + 1),
+                "synthetic-rotation-1",
+                str(self.activation),
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(json.loads(restart.stdout), [candidate, receipt])
+
+        validate_unsigned_directory_candidate(
+            candidate, self.material["roots"], now_ms=NOW + 1
+        )
+        validate_directory(
+            sign_directory(candidate),
+            self.material["roots"],
+            now_ms=NOW + 1,
+        )
         self.assertEqual(candidate["directory_epoch"], 2)
         self.assertEqual(receipt["agent_ids"], sorted(self.material["agents"]))
         self.assertFalse(receipt["contains_private_material"])
@@ -186,6 +250,44 @@ class RotationTests(unittest.TestCase):
                 wrong_base,
                 self.material["roots"],
                 self.announcements[0],
+                now_ms=NOW,
+                ceremony_id="synthetic-rotation-1",
+                activation_at_ms=self.activation,
+            )
+
+    def test_successor_kid_collision_is_global_across_key_purposes(self):
+        colliding = copy.deepcopy(self.material["snapshot"])
+        alice = next(
+            agent for agent in colliding["agents"] if agent["id"] == "alice"
+        )
+        alice["encryption_keys"][0]["kid"] = "alice/sig/2"
+        colliding = sign_directory(colliding)
+        validate_directory(
+            colliding, self.material["roots"], now_ms=NOW
+        )
+        directory = Directory(colliding)
+
+        announcements = copy.deepcopy(self.announcements)
+        for announcement in announcements:
+            announcement["base_directory_sha256"] = directory.hash
+            if announcement["agent_id"] == "alice":
+                announcement["previous_encryption_kid"] = "alice/sig/2"
+            bundle = KeyBundle.load(
+                self.material["bundles"][announcement["agent_id"]]
+            )
+            announcement["signature"] = b64url(
+                bundle.signing_private.sign(
+                    announcement_preimage(announcement)
+                )
+            )
+
+        with self.assertRaisesRegex(
+            RotationError, "colliding successor key"
+        ):
+            compose_rotation(
+                colliding,
+                self.material["roots"],
+                announcements,
                 now_ms=NOW,
                 ceremony_id="synthetic-rotation-1",
                 activation_at_ms=self.activation,
@@ -312,6 +414,30 @@ class RotationTests(unittest.TestCase):
                 method="POST",
                 path="/v1/messages",
                 now_ms=self.activation + 1,
+            )
+
+        inverted = wrap_request(
+            {},
+            keys=old_sender,
+            method="POST",
+            path="/v1/claims",
+            now_ms=NOW + 60_000,
+        )
+        inverted["auth"]["expires_at_ms"] = NOW + 30_000
+        inverted["auth"]["signature"]["value"] = b64url(
+            old_sender.signing_private.sign(
+                auth_preimage(inverted["auth"])
+            )
+        )
+        with self.assertRaisesRegex(
+            protocol.ProtocolError, "expired_request"
+        ):
+            validate_request(
+                inverted,
+                directory=self.directory,
+                method="POST",
+                path="/v1/claims",
+                now_ms=NOW,
             )
 
     def test_activation_rejects_dropped_old_encryption_key(self):
