@@ -13,7 +13,7 @@ import json
 import re
 import uuid
 from hashlib import sha256
-from typing import Any
+from typing import Any, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -258,7 +258,7 @@ def validate_structure(envelope: Any) -> dict[str, Any]:
     _validate_uuid7(envelope["message_id"], issued)
 
     sender = _reject_if_not_exact_fields(envelope["sender"], SENDER_FIELDS)
-    sender_id = _require_identifier(sender["id"])
+    _require_identifier(sender["id"])
     signing_kid = _require_identifier(sender["signing_kid"])
 
     audience = _reject_if_not_exact_fields(
@@ -365,6 +365,7 @@ def _validate_time_and_replay(
     now = context.get("now_ms")
     if not _is_int(now):
         raise ProtocolError("invalid_context")
+    now = cast(int, now)
     if envelope["issued_at_ms"] > now + MAX_CLOCK_SKEW_MS:
         raise ProtocolError("issued_in_future")
     if envelope["expires_at_ms"] <= now:
@@ -436,7 +437,6 @@ def validate_endpoint_receive(
     _validate_time_and_replay(envelope, context)
 
     receiver = context.get("receiver_id")
-    audience = envelope["audience"]
     receiver_audiences = context.get("receiver_audiences", [])
     if not isinstance(receiver, str) or _audience_key(envelope) not in receiver_audiences:
         raise ProtocolError("wrong_audience")

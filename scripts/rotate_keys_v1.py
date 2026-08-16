@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 
@@ -43,7 +44,6 @@ def directory_arguments(parser):
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument("--roots", type=Path, required=True)
     parser.add_argument("--state", type=Path, required=True)
-    parser.add_argument("--now-ms", type=int, required=True)
 
 
 def main():
@@ -76,13 +76,14 @@ def main():
     recovery.add_argument("--revoke-kid", action="append", required=True)
     recovery.add_argument("--output", type=Path, required=True)
     arguments = parser.parse_args()
+    now_ms = int(time.time() * 1000)
 
     try:
         directory = Directory.load(
             arguments.directory,
             arguments.roots,
             arguments.state,
-            now_ms=arguments.now_ms,
+            now_ms=now_ms,
         )
         roots = load_roots(arguments.roots)
         if arguments.command == "prepare":
@@ -94,7 +95,7 @@ def main():
                 ceremony_id=arguments.ceremony_id,
                 activation_at_ms=arguments.activation_at_ms,
                 expires_at_ms=arguments.expires_at_ms,
-                now_ms=arguments.now_ms,
+                now_ms=now_ms,
             )
             write_exclusive(arguments.announcement, announcement)
             result = {
@@ -112,7 +113,7 @@ def main():
                 directory.snapshot,
                 roots,
                 announcements,
-                now_ms=arguments.now_ms,
+                now_ms=now_ms,
                 ceremony_id=arguments.ceremony_id,
                 activation_at_ms=arguments.activation_at_ms,
             )
@@ -133,7 +134,7 @@ def main():
                     arguments.keys,
                     arguments.staged_keys,
                     directory,
-                    now_ms=arguments.now_ms,
+                    now_ms=now_ms,
                 ),
             }
         else:
@@ -141,7 +142,7 @@ def main():
                 directory.snapshot,
                 roots,
                 set(arguments.revoke_kid),
-                now_ms=arguments.now_ms,
+                now_ms=now_ms,
             )
             write_exclusive(arguments.output, candidate)
             result = {

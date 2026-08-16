@@ -34,9 +34,11 @@ The ceremony is intentionally split so no composer holds participant keys:
 3. `rotate_keys_v1.py compose` requires exactly one valid, non-replayed
    announcement for every active agent. It has no private-key input and emits
    deterministic unsigned D+1 plus a redacted receipt.
-4. D+1 gives new keys a common future `not_before_ms`, retains old key validity
-   for the drain, retires every active audience predecessor and adds an
-   identical active successor at the next audience epoch.
+4. D+1 gives new keys a common future `not_before_ms` and ends both old public
+   key validity windows exactly at activation. Old encryption *private* keys
+   remain local for the drain, but cannot authorize post-cut traffic. D+1 also
+   retires every active audience predecessor and adds an identical active
+   successor at the next audience epoch.
 5. Independent governance holders append their signatures one at a time with
    `sign_directory_v1.py`. The configured threshold is verified by normal
    directory loading. The aggregator never receives all private keys.
@@ -59,7 +61,7 @@ python3 scripts/rotate_keys_v1.py prepare \
   --staged-keys FIXTURE/staging/agent.next.keys.json \
   --announcement FIXTURE/announcements/agent.json \
   --ceremony-id synthetic-rotation-1 \
-  --now-ms NOW_MS --activation-at-ms ACTIVATION_MS \
+  --activation-at-ms ACTIVATION_MS \
   --expires-at-ms ANNOUNCEMENT_EXPIRY_MS
 
 python3 scripts/rotate_keys_v1.py compose \
@@ -69,7 +71,7 @@ python3 scripts/rotate_keys_v1.py compose \
   --announcement FIXTURE/announcements/agent-a.json \
   --announcement FIXTURE/announcements/agent-b.json \
   --ceremony-id synthetic-rotation-1 \
-  --now-ms NOW_MS --activation-at-ms ACTIVATION_MS \
+  --activation-at-ms ACTIVATION_MS \
   --output FIXTURE/directory-next-unsigned.json \
   --receipt FIXTURE/compose-receipt.json
 ```
@@ -92,7 +94,6 @@ python3 scripts/rotate_keys_v1.py forward-recovery \
   --directory FIXTURE/directory-next-signed.json \
   --roots FIXTURE/governance-roots.json \
   --state FIXTURE/recovery-directory-state.json \
-  --now-ms RECOVERY_MS \
   --revoke-kid agent/sig/2 --revoke-kid agent/enc/2 \
   --output FIXTURE/directory-forward-recovery-unsigned.json
 ```
@@ -115,10 +116,12 @@ A package contains only:
 
 Apply checks the authority, every hash, directory signature/expiry, local
 owner-only key bundle, direct/group membership, exact harness-approved locality
-set, roots continuity and anti-rollback state. It installs directory before the
-high-water state under a restartable journal, so a crash can only leave D or a
-resumable D+1 transition. Invalid rollback/root/split-view attempts mutate
-nothing and leave no journal.
+set, roots continuity and anti-rollback state. A separate owner-only durable
+high-water binds the target agent, directory epoch/hash, roots hash and exact
+package hash: exact replay is idempotent, while an older or same-epoch
+conflicting package is rejected. Installation runs under a restartable journal,
+so a crash can only leave D or a resumable D+1 transition. Invalid rollback,
+root or split-view attempts mutate nothing and leave no journal.
 
 ```bash
 # Synthetic authority; never treat this test key as live governance.
@@ -135,20 +138,23 @@ python3 scripts/provision_v1.py build \
   --package FIXTURE/package \
   --provisioning-id synthetic-client-1 --agent-id agent \
   --build-commit EXACT_40_HEX_COMMIT \
-  --now-ms NOW_MS --expires-at-ms EXPIRY_MS
+  --expires-at-ms EXPIRY_MS
 
 python3 scripts/provision_v1.py apply \
   --package FIXTURE/package \
   --authority FIXTURE/provisioner-public.json \
   --keys FIXTURE/agent.keys.json \
   --destination FIXTURE/client \
-  --local-agent-id agent \
-  --now-ms NOW_MS
+  --local-agent-id agent
 
 python3 scripts/provision_v1.py doctor \
   --destination FIXTURE/client \
-  --keys FIXTURE/agent.keys.json --agent-id agent --now-ms NOW_MS
+  --keys FIXTURE/agent.keys.json --agent-id agent
 ```
+
+Operational commands always use the system clock. Deterministic `now_ms`
+injection exists only in the Python test fixtures and is not exposed by these
+CLIs.
 
 `doctor` is local-only. `network_checked: false` and `matrix_receipt: false`
 are intentional: reachability, authenticated Tribe round-trip and Matrix

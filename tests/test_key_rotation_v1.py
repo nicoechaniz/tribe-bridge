@@ -17,8 +17,10 @@ from tribe_crypto_v1 import (
     decrypt_envelope,
     encrypt_envelope,
     message_payload,
+    uuid7,
 )
 from tribe_directory_v1 import Directory, directory_preimage
+import tribe_protocol_v1 as protocol
 from tribe_rotation_v1 import (
     RotationError,
     activate_staged_bundle,
@@ -115,6 +117,14 @@ class RotationTests(unittest.TestCase):
                 if key["epoch"] == 2
             )
         )
+        for agent in candidate["agents"]:
+            for purpose in ("signing_keys", "encryption_keys"):
+                previous = next(
+                    key for key in agent[purpose] if key["epoch"] == 1
+                )
+                self.assertEqual(
+                    previous["not_after_ms"], self.activation
+                )
 
     def test_forged_stale_wrong_base_partial_and_replay_fail_closed(self):
         forged = copy.deepcopy(self.announcements[0])
@@ -126,6 +136,17 @@ class RotationTests(unittest.TestCase):
                 self.material["snapshot"],
                 self.material["roots"],
                 forged,
+                now_ms=NOW,
+                ceremony_id="synthetic-rotation-1",
+                activation_at_ms=self.activation,
+            )
+        invalid_window = copy.deepcopy(self.announcements[0])
+        invalid_window["issued_at_ms"] = invalid_window["expires_at_ms"]
+        with self.assertRaises(RotationError):
+            verify_announcement(
+                self.material["snapshot"],
+                self.material["roots"],
+                invalid_window,
                 now_ms=NOW,
                 ceremony_id="synthetic-rotation-1",
                 activation_at_ms=self.activation,
@@ -214,6 +235,24 @@ class RotationTests(unittest.TestCase):
             )["text"],
             "queued",
         )
+        post_cut = copy.deepcopy(queued)
+        post_cut["issued_at_ms"] = self.activation + 1
+        post_cut["expires_at_ms"] = self.activation + HOUR
+        post_cut["message_id"] = uuid7(self.activation + 1)
+        post_cut["signature"]["value"] = b64url(
+            old_sender.signing_private.sign(
+                protocol.signature_preimage(post_cut)
+            )
+        )
+        with self.assertRaisesRegex(
+            protocol.ProtocolError, "key_not_valid"
+        ):
+            decrypt_envelope(
+                post_cut,
+                directory=directory2,
+                keys=activated,
+                now_ms=self.activation + 1,
+            )
         retry = activate_staged_bundle(
             current,
             self.staged["worker@localhost"],
@@ -248,24 +287,76 @@ class RotationTests(unittest.TestCase):
                 now_ms=self.activation + 1,
             )
 
+    def test_activation_rejects_symlink_and_current_path_swap(self):
+        candidate, _ = self.compose()
+        signed = sign_directory(candidate)
+        directory2 = Directory(signed)
+        current = self.material["bundles"]["alice"]
+        staged = self.staged["alice"]
+        staged_link = self.tmp / "staged-link.json"
+        staged_link.symlink_to(staged)
+        with self.assertRaises((OSError, RotationError)):
+            activate_staged_bundle(
+                current,
+                staged_link,
+                directory2,
+                now_ms=self.activation + 1,
+            )
+
+        replacement = self.tmp / "replacement.json"
+        replacement.write_bytes(current.read_bytes())
+        os.chmod(replacement, 0o600)
+
+        def swap(_phase):
+            current.unlink()
+            current.symlink_to(replacement)
+
+        with self.assertRaisesRegex(
+            RotationError, "changed during activation"
+        ):
+            activate_staged_bundle(
+                current,
+                staged,
+                directory2,
+                now_ms=self.activation + 1,
+                fault_hook=swap,
+            )
+
     def test_forward_recovery_advances_and_refuses_to_strand_agent(self):
         candidate, _ = self.compose()
         signed = sign_directory(candidate)
         recovered = build_forward_recovery(
             signed,
             self.material["roots"],
-            {"alice/sig/2", "alice/enc/2"},
+            {"alice/sig/1", "alice/enc/1"},
             now_ms=self.activation + 1,
         )
         self.assertEqual(recovered["directory_epoch"], 3)
         self.assertEqual(recovered["previous_sha256"], Directory(signed).hash)
         alice = next(a for a in recovered["agents"] if a["id"] == "alice")
-        self.assertEqual(alice["signing_keys"][-1]["status"], "revoked")
+        self.assertEqual(alice["signing_keys"][0]["status"], "revoked")
+        self.assertLessEqual(
+            recovered["expires_at_ms"], signed["expires_at_ms"]
+        )
+        for agent in recovered["agents"]:
+            for purpose in ("signing_keys", "encryption_keys"):
+                self.assertTrue(
+                    any(
+                        key["status"] == "active"
+                        and key["not_before_ms"] <= recovered["issued_at_ms"]
+                        and (
+                            key["not_after_ms"] is None
+                            or recovered["expires_at_ms"]
+                            <= key["not_after_ms"]
+                        )
+                        for key in agent[purpose]
+                    )
+                )
         with self.assertRaises(RotationError):
             build_forward_recovery(
                 signed,
                 self.material["roots"],
-                {"alice/sig/1", "alice/sig/2"},
+                {"alice/sig/2", "alice/enc/2"},
                 now_ms=self.activation + 1,
             )
 
