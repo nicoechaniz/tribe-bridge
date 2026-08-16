@@ -33,14 +33,12 @@ locality and explicit Telegram visibility.
 
 ## Integrated release-candidate references
 
-- Tribe PR #65 / issue #64: reviewed pre-cleanup head
-  `7b9acda839423aa21afceae22abcd47008bbeba6` (tree
-  `e443706cf191ab31d93252a128ed04530f6da39f`); the cleanup head requires a new
-  exact review before merge.
-- Matrix merged: `75b34804f8d013d348129946c0cd541a4448e71d`
-  (tree `38f3edb002ac52aac2d51fbf533cb58c38b813c5`).
-- Cluster code boundary: `93230a890ffad78aa1d10af2b68a33a45ff9845c`
-  (tree `598f502df42408d3f6e0dc788e765461fb54081b`).
+- Tribe PR #65 / issue #64: the exact qualified source boundary and independent
+  review state are recorded in the release-candidate receipt and PR checks.
+- Matrix merged: `09414d6edd9586f539be8272c4979d0b36c86b87`
+  (tree `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`).
+- Cluster merged: `4b77d2e47f31258d0801bd3a881b8dcf1a7584be`
+  (tree `726159a25d6708a8388380f81f7cbec9f51122a9`).
 
 These references are provenance, not deployment evidence. Canonical tracking
 lives in `nicoechaniz/tribe-bridge` issues and AlterMundi Project #8. Human

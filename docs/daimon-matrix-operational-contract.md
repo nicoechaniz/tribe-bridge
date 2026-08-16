@@ -11,13 +11,11 @@ starting baselines for the integrated work were Matrix
 current candidate pins.
 
 The current merged Matrix integration point is
-`75b34804f8d013d348129946c0cd541a4448e71d`, tree
-`38f3edb002ac52aac2d51fbf533cb58c38b813c5`. Matrix release metadata is
-being qualified separately as `0.1.0rc1`; Tribe must not anticipate or pin a
-new Matrix head until that head is reviewed and merged. The current Cluster
-code candidate is `93230a890ffad78aa1d10af2b68a33a45ff9845c`, tree
-`598f502df42408d3f6e0dc788e765461fb54081b`, and remains under integrated
-qualification.
+`09414d6edd9586f539be8272c4979d0b36c86b87`, tree
+`d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`. The merged Cluster integration
+point is `4b77d2e47f31258d0801bd3a881b8dcf1a7584be`, tree
+`726159a25d6708a8388380f81f7cbec9f51122a9`. Tribe must not anticipate or pin
+another Matrix or Cluster head until that head is reviewed and merged.
 
 No current deployment is assumed. Read [`../RESUME.md`](../RESUME.md) and the
 Matrix repository `RESUME.md` before operational work. Tribe's

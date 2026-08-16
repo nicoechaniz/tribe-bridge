@@ -13,20 +13,18 @@ Last reconciled: 2026-08-16.
 - Tribe merged baseline: commit
   `187c61d881e6de830a029027144193645f2c7f62`, tree
   `84da16611be62581d9a049d9f567652c4cc4e61b`.
-- Tribe PR #65 carries the issue #64 release-candidate lineage whose reviewed
-  pre-cleanup head was commit
-  `7b9acda839423aa21afceae22abcd47008bbeba6`, tree
-  `e443706cf191ab31d93252a128ed04530f6da39f`. The final cleanup and receipt
-  require review on their new exact head before merge.
+- Tribe PR #65 carries the issue #64 release-candidate lineage. Its exact
+  qualified source boundary and independent review state are recorded in the
+  release-candidate receipt and PR checks; no earlier candidate is current.
 - Matrix is merged at commit
-  `75b34804f8d013d348129946c0cd541a4448e71d`, tree
-  `38f3edb002ac52aac2d51fbf533cb58c38b813c5`.
-- Cluster's current code boundary is commit
-  `93230a890ffad78aa1d10af2b68a33a45ff9845c`, tree
-  `598f502df42408d3f6e0dc788e765461fb54081b`.
+  `09414d6edd9586f539be8272c4979d0b36c86b87`, tree
+  `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`.
+- Cluster is merged at commit
+  `4b77d2e47f31258d0801bd3a881b8dcf1a7584be`, tree
+  `726159a25d6708a8388380f81f7cbec9f51122a9`.
 
 These hashes identify code and review boundaries only. They do not assert that
-Cluster is merged or that any of the three components is deployed.
+any of the three components is deployed.
 
 ## Current protocol and operational boundary
 
