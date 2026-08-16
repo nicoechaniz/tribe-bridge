@@ -40,27 +40,13 @@ if [[ -z "$client_env" ]]; then
     printf 'tribe: TRIBE_CLIENT_ENV is required\n' >&2
     exit 2
 fi
-if [[ ! -r "$client_env" ]]; then
-    printf 'tribe: client environment is not readable: %s\n' "$client_env" >&2
-    exit 2
-fi
-
-set -a
-# shellcheck disable=SC1090
-source "$client_env"
-set +a
-
+# Freeze executable selection before loading identity material. The Python
+# launcher parses a closed data format; client files are never sourced as shell.
 repo="${TRIBE_V1_REPO:-$HOME/Projects/tribe-bridge}"
 python="${TRIBE_V1_PYTHON:-$HOME/.tribe-bridge/v1/venv/bin/python}"
-
-case "$command_name" in
-    send)
-        exec "$python" "$repo/scripts/send_v1.py" "$@"
-        ;;
-    inbox)
-        exec "$python" "$repo/scripts/check_inbox_v1.py" "$@"
-        ;;
-    flush-outbox)
-        exec "$python" "$repo/scripts/flush_outbox_v1.py" "$@"
-        ;;
-esac
+exec "$python" "$repo/scripts/tribe_launcher.py" \
+    --repo "$repo" \
+    --python "$python" \
+    --client-env "$client_env" \
+    --command "$command_name" \
+    -- "$@"

@@ -60,9 +60,14 @@ def _repo() -> Path:
 
 
 def _run(arguments, *, stdin_text=None):
+    repo = _repo()
+    client_env = os.environ.get("TRIBE_CLIENT_ENV")
+    if not client_env:
+        raise RuntimeError("TRIBE_CLIENT_ENV is required")
+    command = [str(repo / "scripts" / "tribe"), *arguments]
     result = subprocess.run(
-        [os.environ.get("TRIBE_V1_PYTHON", "python3"), *arguments],
-        cwd=_repo(),
+        command,
+        cwd=repo,
         capture_output=True,
         text=True,
         timeout=60,
@@ -91,7 +96,7 @@ class TribeV1Provider:
         try:
             if tool_name == "send_to_agent":
                 command = [
-                    "scripts/send_v1.py",
+                    "send",
                     "--to",
                     args["to"],
                     "--text-stdin",
@@ -104,7 +109,7 @@ class TribeV1Provider:
                 )
             if tool_name == "send_to_tribe_group":
                 command = [
-                    "scripts/send_v1.py",
+                    "send",
                     "--group",
                     args["group"],
                     "--classification",
@@ -119,7 +124,7 @@ class TribeV1Provider:
                 )
             if tool_name == "check_inbox":
                 return json.dumps(
-                    _run(["scripts/check_inbox_v1.py"]),
+                    _run(["inbox"]),
                     ensure_ascii=False,
                 )
             raise RuntimeError(f"unknown tool: {tool_name}")

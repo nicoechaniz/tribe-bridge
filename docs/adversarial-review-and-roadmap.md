@@ -4,6 +4,17 @@ Status: 2026-07-31. This document distinguishes implemented draft controls from
 deployed guarantees. No draft PR listed here is production merely because its
 tests pass.
 
+Current-status note (2026-08-11): the tables and gates below are the preserved
+historical review that led to Tribe v1. V0 remains retired. The deployed v1
+broker is healthy at directory epoch 5 and survived the authorized cold host
+reboot. Matrix DM-083 has since completed its real same-being two-host dogfood,
+with exact host-qualified Matrix/Cluster code `915c56c`/`94d80ba`; one ordinary
+Tribe message was proven only as separate transport/dedup/ACK evidence. Tribe
+Bridge remains deployed until Matrix native cross-being delivery, fresh-host
+custody, independent reviews and the explicit human migration/archive gates
+are complete. This note does not rewrite the 2026-07-31 evidence or authorize
+an archive.
+
 ## Executive finding
 
 The original system mixed six different planes—messages, work ownership,
