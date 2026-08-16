@@ -13,8 +13,8 @@ current candidate pins.
 The current merged Matrix integration point is
 `09414d6edd9586f539be8272c4979d0b36c86b87`, tree
 `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`. The merged Cluster integration
-point is `4b77d2e47f31258d0801bd3a881b8dcf1a7584be`, tree
-`726159a25d6708a8388380f81f7cbec9f51122a9`. Tribe must not anticipate or pin
+point is `820e3792a227b1848681a3421b113e8822c8d08a`, tree
+`4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8`. Tribe must not anticipate or pin
 another Matrix or Cluster head until that head is reviewed and merged.
 
 No current deployment is assumed. Read [`../RESUME.md`](../RESUME.md) and the

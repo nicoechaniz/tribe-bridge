@@ -20,8 +20,8 @@ Last reconciled: 2026-08-16.
   `09414d6edd9586f539be8272c4979d0b36c86b87`, tree
   `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`.
 - Cluster is merged at commit
-  `4b77d2e47f31258d0801bd3a881b8dcf1a7584be`, tree
-  `726159a25d6708a8388380f81f7cbec9f51122a9`.
+  `820e3792a227b1848681a3421b113e8822c8d08a`, tree
+  `4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8`.
 
 These hashes identify code and review boundaries only. They do not assert that
 any of the three components is deployed.
