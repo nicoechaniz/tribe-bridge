@@ -1,14 +1,18 @@
 # Tribe Bridge transitional roadmap
 
-Status: reconciled 2026-08-16 against merged baseline
+Status: reconciled 2026-08-16. The merged Tribe baseline is
 `187c61d881e6de830a029027144193645f2c7f62` (tree
-`84da16611be62581d9a049d9f567652c4cc4e61b`). Older draft-stack and deployment
-tables are historical Git evidence, not this repository's current roadmap.
+`84da16611be62581d9a049d9f567652c4cc4e61b`). PR #65 carries issue #64's RC
+lineage; its reviewed pre-cleanup head is
+`7b9acda839423aa21afceae22abcd47008bbeba6` (tree
+`e443706cf191ab31d93252a128ed04530f6da39f`) and the final cleanup requires a
+new review on its exact head.
 
-Integrated baselines are Matrix
-`e855148ffac5b2f4068ba56be6324d7b78fb430f` and Cluster
-`734fd0037dcf84783ef7991415014af7435a46f2`. No runtime, host, key, directory
-epoch or external participant is asserted current by this document.
+Matrix is merged at `75b34804f8d013d348129946c0cd541a4448e71d`
+(tree `38f3edb002ac52aac2d51fbf533cb58c38b813c5`). Cluster's current code boundary
+is `93230a890ffad78aa1d10af2b68a33a45ff9845c` (tree
+`598f502df42408d3f6e0dc788e765461fb54081b`). These are code/provenance facts,
+not claims of deployment, live custody or a merged Cluster release.
 
 ## Role in the integrated release candidate
 
@@ -19,11 +23,15 @@ Tribe Bridge remains a narrow transitional carrier:
 - it cannot prove Matrix authenticated recipient intake, relationship or grant
   consent, canonical event convergence, semantic processing or delivery;
 - it must not dual-write or become an ambiguous fallback for Matrix;
-- it retains no v0 compatibility, history migration or downgrade path.
+- it retains no v0 compatibility, history migration or downgrade path;
+- each audience epoch has one recipient policy, with no compatibility valve
+  for an in-place observer mutation.
 
-## Closed local implementation gate — issue #64
+## Local implementation gate — issue #64 / PR #65
 
-The release-candidate branch must demonstrate, entirely with disposable state:
+The candidate lineage demonstrates the following entirely with disposable
+state. Its final exact head must repeat the full qualification and independent
+review before merge:
 
 1. Each synthetic active agent independently generates successor private keys
    and signs a public announcement with its current key.
@@ -48,7 +56,9 @@ The release-candidate branch must demonstrate, entirely with disposable state:
    journaled transaction, refuses to start an expired transaction and emits a
    sanitized receipt.
 6. The complete supported-Python suite, protocol vectors, coordination audit,
-   compilation and diff checks pass cleanly with no rerun used as evidence.
+   compilation and diff checks pass cleanly with no rerun used as evidence. A
+   checked-in receipt binds the qualified source archive and exact requirements
+   by SHA-256 and records rather than crosses the remaining human gates.
 7. An independent adversarial reviewer approves the exact candidate hash before
    merge. The author does not self-approve or bypass branch protection.
 

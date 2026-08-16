@@ -36,12 +36,10 @@ the maximum message TTL and delivery-retention window. Rollback is a corrective
 successor epoch; never restore an older snapshot over advanced anti-rollback
 state.
 
-If an incident already mutated an audience epoch in place, a corrective
-successor may mark the retired observed direct with the signed
-`legacy_unobserved_receive: true` valve. This preserves both exact historical
-recipient variants for endpoint receive only; it does not permit new broker
-admission. Record the affected window and remove the valve with the retired
-epoch after the bounded retention period.
+An audience epoch must never be mutated in place. There is no production
+compatibility valve for mixed recipient policies under one epoch. Recovery
+uses a corrective successor epoch; invalid historical delivery is handled as
+incident evidence outside the protocol runtime.
 
 ## Durability contract
 

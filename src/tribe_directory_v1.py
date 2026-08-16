@@ -49,7 +49,6 @@ AUDIENCE_FIELDS = {
 }
 AUDIENCE_OPTIONAL_FIELDS = {
     "observers",
-    "legacy_unobserved_receive",
 }
 ROOTS_FIELDS = {"schema", "threshold", "keys"}
 STATE_FIELDS = {
@@ -164,16 +163,6 @@ def _exact_with_optional(
 def audience_recipients(audience: dict[str, Any]) -> list[str]:
     """Return members and explicitly governed observers for an audience."""
     return [*audience["members"], *audience.get("observers", [])]
-
-
-def audience_receive_recipient_sets(
-    audience: dict[str, Any],
-) -> list[list[str]]:
-    """Return every signed recipient policy valid for endpoint receive."""
-    policies = [audience_recipients(audience)]
-    if audience.get("legacy_unobserved_receive") is True:
-        policies.append(audience["members"])
-    return policies
 
 
 def _identifier(value: Any) -> str:
@@ -375,16 +364,6 @@ def _validate_directory(
                 )
             if len(audience_recipients(audience)) > protocol.MAX_RECIPIENTS:
                 raise DirectoryError("too many audience recipients")
-        legacy_receive = audience.get("legacy_unobserved_receive")
-        if legacy_receive is not None and (
-            legacy_receive is not True
-            or audience["type"] != "direct"
-            or audience["status"] != "retired"
-            or not observers
-        ):
-            raise DirectoryError(
-                "legacy unobserved receive requires a retired observed direct"
-            )
     protocol.canonical_json(snapshot)
     return snapshot
 
@@ -616,10 +595,9 @@ class Directory:
                 audience_recipient_sets[key] = [recipients]
                 if sender_id in audience["allowed_senders"]:
                     authorized.append(key)
-            receive_sets = audience_receive_recipient_sets(audience)
-            if any(receiver_id in policy for policy in receive_sets):
+            if receiver_id in recipients:
                 audience_members[key] = recipients
-                audience_recipient_sets[key] = receive_sets
+                audience_recipient_sets[key] = [recipients]
                 receiver_audiences.append(key)
         return {
             "now_ms": now_ms,

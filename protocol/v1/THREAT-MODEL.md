@@ -1,7 +1,9 @@
 # Tribe Protocol v1 threat model
 
-Status: normative security input for v1. Implementation MUST NOT merge before
-independent review of this document, `SPEC.md`, and the conformance vectors.
+Status: release-candidate normative security input for v1. v1 is the only
+supported protocol, not an asserted deployment. Implementation MUST NOT merge
+before independent review of the exact candidate, this document, `SPEC.md`,
+and the conformance vectors.
 
 ## Security goals
 
@@ -80,12 +82,10 @@ original recipients; it cannot authorize new encryption or broker admission.
 Pending sender outboxes must be drained before the transition. The old epoch
 is removed after the maximum envelope TTL and delivery-retention window.
 
-If a faulty rollout admitted both member-only and observed envelopes under the
-same audience epoch, governance may explicitly mark that retired direct with
-`legacy_unobserved_receive`. The exception is receive-only and signed: brokers
-still reject new admission, and endpoints accept only the two exact historical
-sets. The observer has no wrap in the member-only variant. Keeping this valve
-beyond the bounded repair window unnecessarily weakens policy clarity.
+An audience epoch has one immutable recipient policy. If a faulty rollout
+mutates an epoch in place, v1 does not widen receive policy to repair it.
+Recovery uses a corrective successor epoch and independently handles any
+invalid historical delivery; production parsing rejects compatibility flags.
 
 ### Compromised sender key
 
