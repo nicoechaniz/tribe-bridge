@@ -45,6 +45,11 @@ JOURNAL_SCHEMA = "tribe-provisioning-journal/v1"
 HIGH_WATER_SCHEMA = "tribe-provisioning-high-water/v1"
 MAX_MANIFEST_LIFETIME_MS = 7 * 86_400_000
 MAX_ARTIFACT_BYTES = 1024 * 1024
+PACKAGE_FILES = {
+    "directory.json",
+    "governance-roots.json",
+    "manifest.json",
+}
 
 MANIFEST_FIELDS = {
     "schema",
@@ -144,6 +149,21 @@ def _regular_file(path: Path, *, private: bool = False) -> bytes:
     if info.st_size <= 0 or info.st_size > MAX_ARTIFACT_BYTES:
         raise ProvisioningError(f"artifact has invalid size: {path.name}")
     return path.read_bytes()
+
+
+def _validate_package_inventory(package: Path) -> None:
+    try:
+        info = package.lstat()
+        names = {entry.name for entry in package.iterdir()}
+    except (FileNotFoundError, NotADirectoryError, OSError) as exc:
+        raise ProvisioningError("invalid provisioning package directory") from exc
+    if (
+        stat.S_ISLNK(info.st_mode)
+        or not stat.S_ISDIR(info.st_mode)
+        or info.st_uid != os.geteuid()
+        or names != PACKAGE_FILES
+    ):
+        raise ProvisioningError("invalid provisioning package inventory")
 
 
 def _write_atomic(path: Path, payload: bytes, mode: int) -> None:
@@ -395,6 +415,7 @@ def verify_package(
     now_ms: int,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     package = Path(package_dir)
+    _validate_package_inventory(package)
     manifest = strict_json(_regular_file(package / "manifest.json"))
     _exact(manifest, MANIFEST_FIELDS, "provisioning manifest")
     if manifest["schema"] != MANIFEST_SCHEMA:
@@ -489,6 +510,9 @@ def verify_package(
         audience = directory.audiences.get((item["type"], item["id"], item["epoch"]))
         if not audience or audience["status"] != "active" or agent_id not in audience["members"]:
             raise ProvisioningError("required audience authorization is absent")
+    # Recheck after reading the bound files so a package which changed during
+    # verification does not become an accepted open-ended container.
+    _validate_package_inventory(package)
     return manifest, snapshot, roots
 
 

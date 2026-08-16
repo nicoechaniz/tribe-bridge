@@ -364,6 +364,33 @@ def compose_rotation(
     if sorted(verified) != active_agents:
         raise RotationError("rotation requires exactly every active agent")
 
+    # A ceremony may shorten the authority window of the keys it replaces,
+    # but it must never revive or extend one.  In particular, an activation
+    # scheduled after a current key's original expiry would turn the assignment
+    # below into an authority extension and would also create a validity gap
+    # before the successor becomes active.
+    for agent in snapshot["agents"]:
+        rotation = verified.get(agent["id"])
+        if rotation is None:
+            continue
+        for purpose, previous_field in (
+            ("signing_keys", "previous_signing_kid"),
+            ("encryption_keys", "previous_encryption_kid"),
+        ):
+            previous = next(
+                key
+                for key in agent[purpose]
+                if key["kid"] == rotation[previous_field]
+            )
+            original_expiry = previous["not_after_ms"]
+            if (
+                original_expiry is not None
+                and activation_at_ms > original_expiry
+            ):
+                raise RotationError(
+                    "rotation activation exceeds a previous key expiry"
+                )
+
     candidate = copy.deepcopy(snapshot)
     candidate["directory_epoch"] = snapshot["directory_epoch"] + 1
     candidate["previous_sha256"] = directory_sha256(snapshot)
@@ -398,7 +425,12 @@ def compose_rotation(
                     # bundle for queued pre-cut ciphertext, but neither old
                     # public key is authorized for newly issued traffic after
                     # the cut.
-                    key["not_after_ms"] = activation_at_ms
+                    original_expiry = key["not_after_ms"]
+                    key["not_after_ms"] = (
+                        activation_at_ms
+                        if original_expiry is None
+                        else min(activation_at_ms, original_expiry)
+                    )
         agent["signing_keys"].append(
             {
                 **rotation["next_signing"],

@@ -1,20 +1,31 @@
 # Daimon Matrix operational contract
 
-## 2026-08-16 supersession note
+## 2026-08-16 release-candidate boundary
 
-This document preserves Tribe Bridge's local descriptor/selector boundary, but
-its 2026-07-31 feature inventory is not the current Matrix roadmap. The exact
-integrated Matrix baseline is
-`e855148ffac5b2f4068ba56be6324d7b78fb430f`; Cluster is
-`734fd0037dcf84783ef7991415014af7435a46f2`. Tribe's
-`daimon-manifest/v1` remains descriptive compatibility evidence only and
-cannot override or reimplement Matrix authority.
+This document preserves Tribe Bridge's local descriptor/selector boundary. It
+does not define the current Matrix roadmap or authority model. The historical
+starting baselines for the integrated work were Matrix
+`e855148ffac5b2f4068ba56be6324d7b78fb430f`, Cluster
+`734fd0037dcf84783ef7991415014af7435a46f2`, and Tribe
+`187c61d881e6de830a029027144193645f2c7f62`. They are provenance only, not
+current candidate pins.
 
-The three repositories are being prepared as a reproducible release candidate
-using local/discardable evidence. No current deployment is assumed. Read
-[`../RESUME.md`](../RESUME.md) and the Matrix repository `RESUME.md` before
-operational work. Tribe remains a separately accounted human-message carrier;
-its ACK is not Matrix intake or a Matrix semantic receipt.
+The current merged Matrix integration point is
+`75b34804f8d013d348129946c0cd541a4448e71d`, tree
+`38f3edb002ac52aac2d51fbf533cb58c38b813c5`. Matrix release metadata is
+being qualified separately as `0.1.0rc1`; Tribe must not anticipate or pin a
+new Matrix head until that head is reviewed and merged. The current Cluster
+code candidate is `93230a890ffad78aa1d10af2b68a33a45ff9845c`, tree
+`598f502df42408d3f6e0dc788e765461fb54081b`, and remains under integrated
+qualification.
+
+No current deployment is assumed. Read [`../RESUME.md`](../RESUME.md) and the
+Matrix repository `RESUME.md` before operational work. Tribe's
+`daimon-manifest/v1` is descriptive evidence only: it cannot authorize a
+Matrix action, override a Matrix root, or replace a root-authorized embodiment
+credential. Tribe remains a separately accounted transitional carrier; its
+transport ACK is neither authenticated Matrix intake nor a signed Matrix
+semantic receipt.
 
 ## Interpretation boundary
 
@@ -24,8 +35,8 @@ poetic/conceptual language. It is valuable as a definition source. It is not an
 authorization policy, network directory, capability attestation, or merge
 algorithm.
 
-The source observed on 2026-07-31 was last edited on 2026-07-07. Its rendered
-text hash and the classification of each concept are recorded in
+The historical source snapshot observed on 2026-07-31 was last edited on
+2026-07-07. Its rendered text hash and concept classifications are recorded in
 [`daimon/concept-inventory.json`](../daimon/concept-inventory.json). A source
 change requires a new inventory review; it does not silently change executable
 behavior.
@@ -53,7 +64,7 @@ model response, self-description, endpoint reachability, or secret reference.
 | `/tribe` | Tribe v1 explicit audiences plus GitHub coordination | Tribe for messages; GitHub for work ownership |
 | `/human` | Explicit human-scoped endpoint | Deployment-specific identity/consent |
 | `/all`, `/near`, `/here` | Declared communication scopes | No implicit membership, proximity, or authorization |
-| `/we.*`, `/source.pull`, `/species.pull.*` | Implemented by the installed `daimon-matrix` runtime | Matrix root, signed history and observer-local policy; Tribe inventory entries remain descriptive only |
+| `/we.*`, `/source.pull`, `/species.pull.*` | Implemented by the exact installed `daimon-matrix` release candidate | Matrix root, signed history and observer-local policy; Tribe inventory entries remain descriptive only |
 
 HMK is private operational memory. An independently authored Wiki is
 authoritative for its documents. collective-memory is a reviewed downstream
