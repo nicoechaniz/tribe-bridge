@@ -73,9 +73,10 @@ SQLite upstream. Recognized patched lines are 3.44.6+, 3.50.7+, and 3.51.3+.
 it selects rollback journal (`DELETE`). An explicit unsafe `wal` request fails.
 All modes use foreign keys, a bounded busy timeout, and `synchronous=FULL`.
 
-The current host Python runtime embeds SQLite 3.46.1, so it MUST operate in
-`DELETE` mode until the runtime is upgraded. For 4–8 agents this conservative
-single-writer mode is acceptable.
+No current host runtime is asserted by this release candidate. Every future
+deployment must record its exact Python/SQLite versions and effective journal
+mode. An affected runtime must use `DELETE`; it may not cite an older host
+observation as current qualification.
 
 ## Commands
 

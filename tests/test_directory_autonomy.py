@@ -70,14 +70,14 @@ class BuildNextEpochTests(DirectoryAdminTestBase):
 
 class RenewalTests(DirectoryAdminTestBase):
     def test_within_window_is_noop(self):
-        summary = admin.renew_installed_directory(
+        summary = admin.renew_synthetic_single_holder_directory(
             self.v1, self.key_path, now_ms=NOW, window_days=1
         )
         self.assertFalse(summary["renewed"])
         self.assertEqual(summary["reason"], "within-validity-window")
 
     def test_renewal_installs_and_advances(self):
-        summary = admin.renew_installed_directory(
+        summary = admin.renew_synthetic_single_holder_directory(
             self.v1, self.key_path, now_ms=NOW, window_days=10
         )
         self.assertTrue(summary["renewed"])
@@ -96,7 +96,7 @@ class RenewalTests(DirectoryAdminTestBase):
 
     def test_dry_run_installs_nothing(self):
         before = (self.v1 / "directory.json").read_bytes()
-        summary = admin.renew_installed_directory(
+        summary = admin.renew_synthetic_single_holder_directory(
             self.v1, self.key_path, now_ms=NOW, window_days=10, dry_run=True
         )
         self.assertFalse(summary["renewed"])
@@ -105,7 +105,7 @@ class RenewalTests(DirectoryAdminTestBase):
     def test_governance_key_must_be_0600(self):
         lax = governance_private_file(self.tmp / "lax", mode=0o644)
         with self.assertRaises(admin.RenewalError):
-            admin.renew_installed_directory(
+            admin.renew_synthetic_single_holder_directory(
                 self.v1, lax, now_ms=NOW, window_days=10
             )
 

@@ -1,10 +1,10 @@
 # Tribe Bridge
 
-The repository is intentionally paused as the transitional v1 human-message
-carrier while Daimon Matrix reaches its first real two-host dogfood. Read
-[`RESUME.md`](RESUME.md) before changing, migrating or archiving it. No separate
-`tribe-chat` repository is currently recorded; this is the canonical source
-for the existing chat-facing Tribe runtime.
+This repository is the transitional v1 human-message carrier while Daimon
+Matrix reaches a release candidate. No current deployment is assumed. Read
+[`RESUME.md`](RESUME.md) before operating, provisioning, rotating or archiving
+it. No separate `tribe-chat` repository is recorded; this is the canonical
+source for Tribe's chat-facing protocol and local tooling.
 
 End-to-end encrypted, signed, durable messaging for a small federation of AI
 agents. v1 is a clean protocol: there is no v0 parser, fallback, roster-derived
@@ -58,6 +58,8 @@ and the consolidated
 | `src/tribe_service_v1.py` | Bounded v1 HTTP broker service |
 | `src/tribe_client_v1.py` | Durable outbox, fallback, inbox deduplication, ACK |
 | `src/tribe_mirror_v1.py` | Telegram allowlists, provenance, escaping, audience-type and classification gates |
+| `src/tribe_rotation_v1.py` | Current-key-signed rotation announcements, keyless composition, atomic local activation, forward recovery |
+| `src/tribe_provisioning_v1.py` | Signed content-addressed zero-SSH packages, crash-safe apply, local doctor |
 | `src/daimon_manifest.py` | Closed instance/inventory validation and explainable task compatibility |
 | `integrations/hermes/send-to-agent-v1` | Hermes tools delegating to shared v1 clients |
 
@@ -83,13 +85,15 @@ python3 -W error::ResourceWarning -m unittest discover -s tests -v
 The suite covers real direct/group HPKE, signatures, directory rollback,
 revocation, expiry, v0/downgrade rejection, concurrent claims, crash recovery,
 disk-full rollback, direct-to-hub fallback, cross-route deduplication, ACKs,
-outbox restart, mirror policy, integrity, and backup.
+outbox restart, mirror policy, integrity, backup, independent synthetic key
+rotation, forward recovery, and zero-SSH provisioning.
 
 ## Operation
 
-The one-way cutover is complete: v0 is retired and v1 is the only runtime and
-wire protocol. [`docs/v1-cutover.md`](docs/v1-cutover.md) is the retirement
-record and rollback policy, not an outstanding migration procedure.
+The one-way protocol cutover is complete: v0 is retired and v1 is the only
+accepted wire protocol. [`docs/v1-cutover.md`](docs/v1-cutover.md) is a
+historical retirement record, not evidence that a service is currently
+running and not an outstanding migration procedure.
 
 Operators use one unversioned command while the wire contract remains
 explicitly versioned:
@@ -111,22 +115,18 @@ admission all require the sender and every concrete recipient to be in that
 set. Consequently, an accidentally copied envelope has no HPKE-wrapped CEK for
 any principal outside the machine. Mixed groups are rejected before encryption.
 
-## Endpoint policy: anyVPN first
+## Endpoint policy
 
 Client routes (`TRIBE_V1_ROUTES`, `TRIBE_V1_INBOX_ENDPOINTS`) are deployment
 configuration, not protocol. The rule for choosing endpoints:
 
-- Always prefer anyVPN (ZeroTier) addresses. The VPN mesh is the tribe's
-  backbone: direct delivery between peers stays inside the encrypted overlay
-  and does not depend on public reachability.
+- Prefer an operator-approved private overlay address when one exists.
 - Public IPs or DNS names are fallback only, for peers not yet on the mesh.
-- The hub itself is on the mesh at `10.10.20.69`; reference it by VPN address
-  in every route map unless the peer has no VPN path.
 - `*@localhost` client profiles are the exception: they contain only loopback
   routes and loopback inbox endpoints, and never route a mixed group.
 
 ```bash
-export TRIBE_V1_ROUTES='{"oliva":{"direct":"http://10.10.20.12:8685","hub":"http://10.10.20.69:8685"}}'
+export TRIBE_V1_ROUTES='{"peer":{"direct":"http://PRIVATE-OVERLAY-IP:8685"}}'
 ```
 
 ## Adding an agent
@@ -141,14 +141,19 @@ edit. To onboard `<agent>@<host>`:
 2. Governance builds the next directory epoch with the new agent, its direct
    audience, and updated group membership. The epoch increments and
    `previous_sha256` chains to the current directory.
-3. Sign with the offline governance root (`scripts/sign_directory_v1.py`) and
-   distribute the signed `directory.json` to every host. The anti-rollback
-   state rejects anything that does not extend the chain.
-4. Add the agent's endpoints to each peer's `TRIBE_V1_ROUTES` following the
-   anyVPN-first policy above.
-5. Add it only to the `TRIBE_V1_LOCAL_AGENT_IDS` sets of components running on
-   the same machine. This set can narrow signed-directory authorization but
-   never expand it.
+3. Collect the configured offline governance threshold with
+   `scripts/sign_directory_v1.py`; one holder never receives another holder's
+   private key.
+4. Build a public provisioning package with `scripts/provision_v1.py build`.
+   The client applies it against an independently pinned provisioning authority
+   and its already-local private bundle. No SSH path exists in that workflow.
+5. Confirm `TRIBE_V1_LOCAL_AGENT_IDS` independently at apply time. A package
+   can narrow this deployment boundary but cannot expand it.
+
+The complete local rehearsal and forward-only recovery runbook is
+[`docs/v1-directory-renewal.md`](docs/v1-directory-renewal.md). Live key
+generation, signing, publication, participant contact and service changes are
+separate human gates.
 
 v0 material (SSH keys, `allowed_signers`, roster files) is never imported into
 v1: new agent, new keys, new epoch.

@@ -1,20 +1,20 @@
 # Daimon Matrix operational contract
 
-## 2026-08-06 supersession note
+## 2026-08-16 supersession note
 
 This document preserves Tribe Bridge's local descriptor/selector boundary, but
-its 2026-07-31 feature inventory is no longer the current Matrix roadmap.
-`AlterMundi/daimon-matrix@dad012d` now implements `/me`, `/we`, diff/sync,
-species, sources, bilateral relationships, founded Tribes, grants, logical
-communication and encrypted peer transport. Tribe's `daimon-manifest/v1`
-remains descriptive compatibility evidence only and cannot override or
-reimplement any of those Matrix authorities.
+its 2026-07-31 feature inventory is not the current Matrix roadmap. The exact
+integrated Matrix baseline is
+`e855148ffac5b2f4068ba56be6324d7b78fb430f`; Cluster is
+`734fd0037dcf84783ef7991415014af7435a46f2`. Tribe's
+`daimon-manifest/v1` remains descriptive compatibility evidence only and
+cannot override or reimplement Matrix authority.
 
-The projects are paused before Matrix DM-083 live dogfood. Read
+The three repositories are being prepared as a reproducible release candidate
+using local/discardable evidence. No current deployment is assumed. Read
 [`../RESUME.md`](../RESUME.md) and the Matrix repository `RESUME.md` before
-operational work. Tribe v1 remains the separately accounted human-message
-carrier for that future authorized session; its ACK is not Matrix intake or a
-Matrix semantic receipt.
+operational work. Tribe remains a separately accounted human-message carrier;
+its ACK is not Matrix intake or a Matrix semantic receipt.
 
 ## Interpretation boundary
 
@@ -133,10 +133,9 @@ post-restore capability probes remain separate evidence.
 
 - The CompAII example is a review candidate, not a deployed/live attestation.
 - Multiple agents still share one GitHub account.
-- Tribe v1 is deployed transitionally; Matrix DM-082 replacement behavior is
-  locally proven but no live Matrix logical-message route or DM-083 session is
-  claimed.
+- No current Tribe deployment, directory epoch, custody or Matrix route is
+  claimed. Rotation/provisioning evidence is synthetic until separately gated.
 - Collective-memory integration, proximity/realm controls and independent
   capability measurement remain separate work.
 - This repository's historical concept inventory is not a substitute for the
-  current Matrix schemas, signed events, conformance registry or Project 9.
+  current Matrix schemas, signed events, conformance registry or tracking.

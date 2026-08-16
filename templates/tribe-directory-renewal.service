@@ -1,8 +1,0 @@
-[Unit]
-Description=Tribe v1 directory renewal (sign epoch N+1 when near expiry)
-
-[Service]
-Type=oneshot
-EnvironmentFile=%h/.tribe-bridge/v1/directory-renewal.env
-ExecStart=%h/.tribe-bridge/v1/venv/bin/python %h/Projects/tribe-bridge/scripts/renew_directory_v1.py --publish-repo %h/Projects/tribe-bridge-directory-live --hub ${TRIBE_V1_RENEWAL_HUB}
-Nice=10

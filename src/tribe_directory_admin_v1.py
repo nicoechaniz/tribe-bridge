@@ -140,7 +140,7 @@ def verify_chain(directory_path, roots_path, state_path, *, now_ms: int) -> Dire
             pass
 
 
-def renew_installed_directory(
+def renew_synthetic_single_holder_directory(
     v1_dir,
     governance_key_path,
     *,
@@ -150,7 +150,12 @@ def renew_installed_directory(
     force: bool = False,
     dry_run: bool = False,
 ):
-    """Renew ~/.tribe-bridge/v1/directory.json in place. Returns a summary dict."""
+    """Synthetic fixture: renew one local directory with one holder key.
+
+    This deliberately has no publishing, service, or remote-install surface.
+    A release ceremony must instead compose an unsigned successor and collect
+    the configured offline threshold signatures independently.
+    """
     now_ms = now_ms if now_ms is not None else _now_ms()
     v1_dir = Path(v1_dir)
     directory_path = v1_dir / "directory.json"

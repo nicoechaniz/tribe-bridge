@@ -1,6 +1,8 @@
 # Tribe v0 retirement record
 
-Status: completed on 2026-07-31. Tribe v1 is the sole runtime and protocol.
+Status: historical event completed on 2026-07-31. Tribe v1 remains the sole
+accepted protocol in this repository, but this record is not evidence that any
+service or host is currently running.
 
 The cutover was a clean replacement, not a data migration. No v0 message,
 inbox row, SSH identity, `allowed_signers` entry, roster, parser, or fallback
