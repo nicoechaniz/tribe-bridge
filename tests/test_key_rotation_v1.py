@@ -19,7 +19,7 @@ from tribe_crypto_v1 import (
     message_payload,
     uuid7,
 )
-from tribe_directory_v1 import Directory, directory_preimage
+from tribe_directory_v1 import Directory, DirectoryError, directory_preimage
 import tribe_protocol_v1 as protocol
 from tribe_rotation_v1 import (
     RotationError,
@@ -29,6 +29,7 @@ from tribe_rotation_v1 import (
     prepare_rotation,
     verify_announcement,
 )
+from tribe_transport_v1 import validate_request, wrap_request
 from v1_fixtures import NOW, b64url, make_material, signing_key
 
 
@@ -261,6 +262,57 @@ class RotationTests(unittest.TestCase):
         )
         self.assertFalse(retry["activated"])
         self.assertEqual(retry["reason"], "already-current")
+        with self.assertRaises(DirectoryError):
+            activate_staged_bundle(
+                current,
+                self.staged["worker@localhost"],
+                directory2,
+                now_ms=NOW,
+            )
+
+    def test_broker_and_http_reject_backdated_old_keys_after_cut(self):
+        candidate, _ = self.compose()
+        directory2 = Directory(sign_directory(candidate))
+        old_sender = KeyBundle.load(self.material["bundles"]["alice"])
+        forged_after_cut = encrypt_envelope(
+            message_payload(
+                sender="alice",
+                to="worker@localhost",
+                text="post-cut but backdated",
+            ),
+            directory=directory2,
+            keys=old_sender,
+            audience_type="direct",
+            audience_id="worker@localhost",
+            local_agent_ids=frozenset(),
+            now_ms=self.activation - 1,
+            ttl_ms=HOUR,
+        )
+        with self.assertRaisesRegex(protocol.ProtocolError, "key_not_valid"):
+            protocol.validate_broker_admission(
+                forged_after_cut,
+                directory2.context(
+                    sender_id="alice", now_ms=self.activation + 1
+                ),
+            )
+
+        wrapped = wrap_request(
+            forged_after_cut,
+            keys=old_sender,
+            method="POST",
+            path="/v1/messages",
+            now_ms=self.activation - 1,
+        )
+        with self.assertRaisesRegex(
+            protocol.ProtocolError, "unauthorized_sender"
+        ):
+            validate_request(
+                wrapped,
+                directory=directory2,
+                method="POST",
+                path="/v1/messages",
+                now_ms=self.activation + 1,
+            )
 
     def test_activation_rejects_dropped_old_encryption_key(self):
         candidate, _ = self.compose()
@@ -283,6 +335,21 @@ class RotationTests(unittest.TestCase):
             activate_staged_bundle(
                 self.material["bundles"]["alice"],
                 bad,
+                directory2,
+                now_ms=self.activation + 1,
+            )
+
+        value = json.loads(staged.read_text())
+        value["encryption"] = [value["encryption"][0]]
+        missing_successor = self.tmp / "missing-successor-stage.json"
+        missing_successor.write_text(json.dumps(value))
+        os.chmod(missing_successor, 0o600)
+        with self.assertRaisesRegex(
+            DirectoryError, "missing the latest encryption key"
+        ):
+            activate_staged_bundle(
+                self.material["bundles"]["alice"],
+                missing_successor,
                 directory2,
                 now_ms=self.activation + 1,
             )

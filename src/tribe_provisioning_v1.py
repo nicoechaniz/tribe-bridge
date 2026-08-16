@@ -83,6 +83,13 @@ HIGH_WATER_FIELDS = {
     "roots_sha256",
     "package_sha256",
 }
+JOURNAL_FIELDS = {
+    "schema",
+    "package_sha256",
+    "agent_id",
+    "target_directory_sha256",
+    "authorized_at_ms",
+}
 
 
 class ProvisioningError(ValueError):
@@ -529,52 +536,118 @@ def apply_package(
     fault_hook: Callable[[str], None] | None = None,
 ) -> dict[str, Any]:
     """Validate then restartably install one package without network access."""
-    manifest, snapshot, roots = verify_package(
-        package_dir, authority_path, now_ms=now_ms
-    )
-    if frozenset(manifest["local_agent_ids"]) != authorized_local_agent_ids:
-        raise ProvisioningError(
-            "package local-agent set lacks an exact harness authorization"
-        )
-    keys_path = Path(keys_path).resolve()
-    bundle = KeyBundle.load(keys_path)
-    directory = Directory(snapshot)
-    if bundle.agent_id != manifest["agent_id"]:
-        raise ProvisioningError("private bundle belongs to another agent")
-    bundle.verify_against(directory, now_ms)
-    if (
-        bundle.signing_kid != manifest["expected_signing_kid"]
-        or not set(manifest["expected_encryption_kids"]) <= set(bundle.encryption_private)
-    ):
-        raise ProvisioningError("local private keys do not match the package")
-
+    package_dir = Path(package_dir)
+    authority_path = Path(authority_path)
     destination = Path(destination)
+    # Avoid creating any target state for a package which is already invalid
+    # at the trusted invocation time of a fresh installation.
+    fresh_validation = None
+    if not destination.exists():
+        fresh_validation = verify_package(
+            package_dir, authority_path, now_ms=now_ms
+        )
     destination.mkdir(parents=True, exist_ok=True, mode=0o700)
-    if stat.S_IMODE(destination.stat().st_mode) & 0o077:
+    destination_info = destination.lstat()
+    if (
+        stat.S_ISLNK(destination_info.st_mode)
+        or not stat.S_ISDIR(destination_info.st_mode)
+        or destination_info.st_uid != os.geteuid()
+        or stat.S_IMODE(destination_info.st_mode) & 0o077
+    ):
         raise ProvisioningError("provisioning destination must be owner-only")
     state_dir = destination / "state"
     state_dir.mkdir(exist_ok=True, mode=0o700)
-    agent_slug = manifest["agent_id"].replace("@", "_").replace("/", "_")
-    directory_path = destination / "directory.json"
-    roots_path = destination / "governance-roots.json"
-    state_path = state_dir / f"{agent_slug}-directory-state.json"
-    environment_path = destination / f"{agent_slug}.client.env"
+    state_info = state_dir.lstat()
+    if (
+        stat.S_ISLNK(state_info.st_mode)
+        or not stat.S_ISDIR(state_info.st_mode)
+        or state_info.st_uid != os.geteuid()
+        or stat.S_IMODE(state_info.st_mode) & 0o077
+    ):
+        raise ProvisioningError("provisioning state directory must be owner-only")
     journal_path = destination / "provision-journal.json"
     high_water_path = destination / "provision-high-water.json"
-    lock_fd = os.open(destination / ".provision.lock", os.O_RDWR | os.O_CREAT, 0o600)
+    lock_fd = os.open(
+        destination / ".provision.lock",
+        os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
+    )
     try:
+        lock_info = os.fstat(lock_fd)
+        if (
+            not stat.S_ISREG(lock_info.st_mode)
+            or lock_info.st_uid != os.geteuid()
+            or stat.S_IMODE(lock_info.st_mode) & 0o077
+        ):
+            raise ProvisioningError("provisioning lock must be owner-only")
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
+
+        journal = None
+        validation_time = now_ms
+        if journal_path.exists():
+            journal = strict_json(_regular_file(journal_path, private=True))
+            _exact(journal, JOURNAL_FIELDS, "provisioning journal")
+            if journal["schema"] != JOURNAL_SCHEMA:
+                raise ProvisioningError("unsupported provisioning journal")
+            validation_time = _integer(
+                journal["authorized_at_ms"],
+                "journal authorization time",
+                minimum=1,
+            )
+            # The journal grants continuation only to the exact signed package
+            # whose transaction was durably started while it was current.
+            unverified_manifest = strict_json(
+                _regular_file(package_dir / "manifest.json")
+            )
+            if (
+                _hash(protocol.canonical_json(unverified_manifest))
+                != journal["package_sha256"]
+            ):
+                raise ProvisioningError(
+                    "another provisioning transaction is unfinished"
+                )
+
+        if journal is None and fresh_validation is not None:
+            manifest, snapshot, roots = fresh_validation
+        else:
+            manifest, snapshot, roots = verify_package(
+                package_dir, authority_path, now_ms=validation_time
+            )
+
         package_hash = _hash(protocol.canonical_json(manifest))
         expected_journal = {
             "schema": JOURNAL_SCHEMA,
             "package_sha256": package_hash,
             "agent_id": manifest["agent_id"],
             "target_directory_sha256": manifest["directory_sha256"],
+            "authorized_at_ms": validation_time,
         }
-        if journal_path.exists():
-            journal = strict_json(_regular_file(journal_path, private=True))
+        if journal is not None:
             if journal != expected_journal:
                 raise ProvisioningError("another provisioning transaction is unfinished")
+
+        if frozenset(manifest["local_agent_ids"]) != authorized_local_agent_ids:
+            raise ProvisioningError(
+                "package local-agent set lacks an exact harness authorization"
+            )
+        keys_path = Path(keys_path).resolve()
+        bundle = KeyBundle.load(keys_path)
+        directory = Directory(snapshot)
+        if bundle.agent_id != manifest["agent_id"]:
+            raise ProvisioningError("private bundle belongs to another agent")
+        bundle.verify_against(directory, validation_time)
+        if (
+            bundle.signing_kid != manifest["expected_signing_kid"]
+            or not set(manifest["expected_encryption_kids"])
+            <= set(bundle.encryption_private)
+        ):
+            raise ProvisioningError("local private keys do not match the package")
+
+        agent_slug = manifest["agent_id"].replace("@", "_").replace("/", "_")
+        directory_path = destination / "directory.json"
+        roots_path = destination / "governance-roots.json"
+        state_path = state_dir / f"{agent_slug}-directory-state.json"
+        environment_path = destination / f"{agent_slug}.client.env"
 
         target_high_water = {
             "schema": HIGH_WATER_SCHEMA,

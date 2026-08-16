@@ -380,10 +380,10 @@ def _audience_key(envelope: dict[str, Any]) -> str:
     return f'{audience["type"]}:{audience["id"]}:{audience["epoch"]}'
 
 
-def _encryption_key_is_valid(
+def _key_is_valid(
     key: Any,
     owner: str,
-    issued_at_ms: int,
+    at_ms: int,
     *,
     allow_retired: bool,
 ) -> bool:
@@ -392,10 +392,10 @@ def _encryption_key_is_valid(
     allowed_statuses = {"active", "retired"} if allow_retired else {"active"}
     if key.get("status") not in allowed_statuses:
         return False
-    if issued_at_ms < key.get("not_before_ms", 0):
+    if at_ms < key.get("not_before_ms", 0):
         return False
     not_after = key.get("not_after_ms")
-    return not_after is None or issued_at_ms < not_after
+    return not_after is None or at_ms < not_after
 
 
 def validate_broker_admission(
@@ -405,6 +405,19 @@ def validate_broker_admission(
     envelope = validate_structure(envelope)
     _validate_key_and_signature(envelope, context)
     _validate_time_and_replay(envelope, context)
+    # Endpoint receive deliberately validates historical key windows against
+    # issuance so ciphertext admitted before a planned cut remains readable.
+    # Broker admission is different: a request arriving after the cut must not
+    # be able to resurrect an old signer by backdating its signed issuance.
+    now = cast(int, context["now_ms"])
+    signing = _key_record(context, envelope["sender"]["signing_kid"])
+    if not _key_is_valid(
+        signing,
+        envelope["sender"]["id"],
+        now,
+        allow_retired=False,
+    ):
+        raise ProtocolError("key_not_valid")
     if _audience_key(envelope) not in context.get("authorized_audiences", []):
         raise ProtocolError("unauthorized_audience")
 
@@ -418,10 +431,10 @@ def validate_broker_admission(
         raise ProtocolError("invalid_recipient_set")
     for recipient in envelope["recipients"]:
         key = encryption_keys.get(recipient["encryption_kid"])
-        if not _encryption_key_is_valid(
+        if not _key_is_valid(
             key,
             recipient["id"],
-            envelope["issued_at_ms"],
+            now,
             allow_retired=False,
         ):
             raise ProtocolError("invalid_recipient_set")
@@ -466,7 +479,7 @@ def validate_endpoint_receive(
     if len(wraps) != 1:
         raise ProtocolError("not_recipient")
     key = context.get("encryption_keys", {}).get(wraps[0]["encryption_kid"])
-    if not _encryption_key_is_valid(
+    if not _key_is_valid(
         key,
         receiver,
         envelope["issued_at_ms"],

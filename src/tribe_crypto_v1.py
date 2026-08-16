@@ -162,6 +162,13 @@ class KeyBundle:
         active = directory.active_key(self.agent_id, "signing", now_ms)
         if active["kid"] != self.signing_kid:
             raise DirectoryError("key bundle is not using latest signing key")
+        active_encryption = directory.active_key(
+            self.agent_id, "encryption", now_ms
+        )
+        if active_encryption["kid"] not in self.encryption_private:
+            raise DirectoryError(
+                "key bundle is missing the latest encryption key"
+            )
 
 
 def message_payload(
