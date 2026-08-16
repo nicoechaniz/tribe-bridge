@@ -163,6 +163,29 @@ class TribeCommandTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 2, result)
                 self.assertIn("client environment", result.stderr)
 
+    def test_client_environment_rejects_fifo_without_blocking(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            client_env = root / "identity.env"
+            os.mkfifo(client_env, mode=0o600)
+            result = subprocess.run(
+                ["bash", str(COMMAND), "inbox"],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=2,
+                env={
+                    "HOME": str(root),
+                    "PATH": os.environ["PATH"],
+                    "TRIBE_CLIENT_ENV": str(client_env),
+                    "TRIBE_V1_REPO": str(ROOT),
+                    "TRIBE_V1_PYTHON": sys.executable,
+                },
+            )
+
+            self.assertEqual(result.returncode, 2, result)
+            self.assertIn("owner-only regular file", result.stderr)
+
 
 class HermesProviderCommandTests(unittest.TestCase):
     def setUp(self):

@@ -44,7 +44,16 @@ def _read_owner_file(path: Path) -> bytes:
         before = path.lstat()
         if stat.S_ISLNK(before.st_mode):
             raise ClientEnvironmentError("client environment cannot be a symlink")
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        if not stat.S_ISREG(before.st_mode):
+            raise ClientEnvironmentError(
+                "client environment must be one owner-only regular file"
+            )
+        descriptor = os.open(
+            path,
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_NONBLOCK", 0),
+        )
         current = os.fstat(descriptor)
         if (before.st_dev, before.st_ino) != (current.st_dev, current.st_ino):
             raise ClientEnvironmentError("client environment changed while opening")
