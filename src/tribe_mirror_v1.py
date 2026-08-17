@@ -43,10 +43,17 @@ _OPAQUE_ARTIFACT_MIN_CHARS = 7000
 class MirrorDeliveryError(RuntimeError):
     """A retryable Telegram part failed without exposing its contents."""
 
-    def __init__(self, part_index: int, total_parts: int):
+    def __init__(
+        self,
+        part_index: int,
+        total_parts: int,
+        *,
+        error_code: str = "telegram_delivery_retryable",
+    ):
         super().__init__("Telegram delivery unavailable")
         self.part_index = part_index
         self.total_parts = total_parts
+        self.error_code = error_code
 
     def failure_record(self, *, endpoint: str, message_id: str) -> dict[str, Any]:
         return {
@@ -54,7 +61,7 @@ class MirrorDeliveryError(RuntimeError):
             "message_id": message_id,
             "failed_part_index": self.part_index,
             "total_parts": self.total_parts,
-            "error": "telegram_delivery_retryable",
+            "error": self.error_code,
         }
 
 
@@ -232,14 +239,21 @@ def deliver_rendered_parts(
             send(parts[index])
         except RuntimeError as exc:
             raise MirrorDeliveryError(index + 1, len(parts)) from exc
-        progress.advance(
-            sender_id,
-            message_id,
-            envelope_sha256,
-            parts,
-            delivered_index=index,
-            now_ms=now_ms,
-        )
+        try:
+            progress.advance(
+                sender_id,
+                message_id,
+                envelope_sha256,
+                parts,
+                delivered_index=index,
+                now_ms=now_ms,
+            )
+        except RuntimeError as exc:
+            raise MirrorDeliveryError(
+                index + 1,
+                len(parts),
+                error_code="mirror_progress_ambiguous",
+            ) from exc
 
 
 @dataclass(frozen=True)

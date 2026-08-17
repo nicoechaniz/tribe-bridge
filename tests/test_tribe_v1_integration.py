@@ -659,6 +659,31 @@ class TribeV1IntegrationTests(unittest.TestCase):
             )
         self.assertEqual(sent, [])
 
+    def test_mirror_progress_failure_is_reported_as_ambiguous(self):
+        class FailingProgress(MirrorProgressStore):
+            def advance(self, *args, **kwargs):
+                raise RuntimeError("simulated durable cursor failure")
+
+        progress = FailingProgress(self.root / "mirror-progress-failure.sqlite")
+        sent = []
+        with self.assertRaises(MirrorDeliveryError) as raised:
+            deliver_rendered_parts(
+                progress,
+                sender_id="alice",
+                message_id="019f0000-0000-7000-8000-000000000069",
+                envelope_sha256="c" * 64,
+                parts=["content must not enter the error record"],
+                send=sent.append,
+                now_ms=NOW,
+            )
+        self.assertEqual(len(sent), 1)
+        failure = raised.exception.failure_record(
+            endpoint="https://broker.invalid",
+            message_id="019f0000-0000-7000-8000-000000000069",
+        )
+        self.assertEqual(failure["error"], "mirror_progress_ambiguous")
+        self.assertNotIn("content", json.dumps(failure))
+
     def test_mirror_suppresses_large_opaque_artifacts(self):
         policy = TelegramPolicy.from_values(
             chat_ids=[-1001],
