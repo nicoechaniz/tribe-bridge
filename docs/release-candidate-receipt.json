@@ -1,18 +1,19 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-16T21:51:19Z",
+  "generated_at": "2026-08-17T01:31:00Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "2c58221e1cfece4b4085c205caae628d3ffeb3a9c3eb89440aa781ddac46e772"
+    "sha256": "1276cf5da3f4eda34cc33d76a6317ee9e2ef2bcc00ae4c92126a48511e2e9c9d"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
     "pull_request": 65,
     "issue": 64,
-    "commit": "16520730e9922ed74cf5ca099d036fe29330e85d",
-    "tree": "abf2a933e1eed67049308f5beba53266f462524a"
+    "commit": "408564b258a59cd12305284896d38e7f6e55f197",
+    "tree": "2745c79911342ff69fdc565c23d0fa4fdde7e99c",
+    "included_issues": [64, 66]
   },
   "integrated_boundaries": {
     "matrix_merged_commit": "09414d6edd9586f539be8272c4979d0b36c86b87",
@@ -22,10 +23,10 @@
   },
   "archive": {
     "format": "git-archive-tar",
-    "prefix": "tribe-bridge-16520730e992/",
-    "command": "git archive --format=tar --prefix=tribe-bridge-16520730e992/ --output=tribe-bridge-16520730e992-source.tar 16520730e9922ed74cf5ca099d036fe29330e85d -- . ':(exclude)docs/release-candidate-receipt.json'",
-    "bytes": 768000,
-    "sha256": "8b50f2219ea221e5053124696a7813984ad182d86c0eb3c4e65fc4f1d2c9a539",
+    "prefix": "tribe-bridge-408564b258a5/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-408564b258a5/ --output=tribe-bridge-408564b258a5-source.tar 408564b258a59cd12305284896d38e7f6e55f197 -- . ':(exclude)docs/release-candidate-receipt.json'",
+    "bytes": 788480,
+    "sha256": "49a597d0803fb898ea64f1b0838bd7018e048453399fff73aa3406408e2d9bbd",
     "receipt_in_archive": false,
     "receipt_note": "The archive excludes this path so it cannot contain a stale predecessor receipt or create a self-referential archive hash."
   },
@@ -58,10 +59,10 @@
   "suite": {
     "command": "python -W error::ResourceWarning -m unittest discover -s tests -q",
     "runs": [
-      {"python": "3.10.20", "tests": 120, "result": "pass"},
-      {"python": "3.11.15", "tests": 120, "result": "pass"},
-      {"python": "3.12.13", "tests": 120, "result": "pass"},
-      {"python": "3.13.14", "tests": 120, "result": "pass"}
+      {"python": "3.10.20", "tests": 124, "result": "pass"},
+      {"python": "3.11.15", "tests": 124, "result": "pass"},
+      {"python": "3.12.13", "tests": 124, "result": "pass"},
+      {"python": "3.13.14", "tests": 124, "result": "pass"}
     ],
     "reruns_used_as_evidence": false,
     "flakes_observed": false
@@ -74,6 +75,8 @@
         "src/tribe_directory_v1.py",
         "src/tribe_rotation_v1.py",
         "src/tribe_provisioning_v1.py",
+        "src/tribe_mirror_v1.py",
+        "scripts/mirror_v1.py",
         "tests/test_tribe_v1_integration.py",
         "tests/test_key_rotation_v1.py",
         "tests/test_provisioning_v1.py"
@@ -87,6 +90,8 @@
         "src/tribe_directory_v1.py",
         "src/tribe_rotation_v1.py",
         "src/tribe_provisioning_v1.py",
+        "src/tribe_mirror_v1.py",
+        "scripts/mirror_v1.py",
         "tests/test_tribe_v1_integration.py",
         "tests/test_key_rotation_v1.py",
         "tests/test_provisioning_v1.py"
