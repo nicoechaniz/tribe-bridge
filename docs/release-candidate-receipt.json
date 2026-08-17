@@ -1,18 +1,18 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-17T06:53:56Z",
+  "generated_at": "2026-08-17T21:06:01Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "8109a81418c9f053fd5a5d1d0f0789e89c362dac09f4fdc9753385731d7f9864"
+    "sha256": "5a107b082d1f42882c57016d0d2219eb3ceb80bda907d83625ef9d7a86c635dd"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
     "pull_request": 65,
     "issue": 64,
-    "commit": "a83188707282ce48699668e06e4cd0a0f641d614",
-    "tree": "a7d849b0b09ec66ff7a5c8143d70127797243da6",
+    "commit": "abff93700bc9906b9181f441b9d29a5747a192c1",
+    "tree": "4d280ddef2d657c6578bf6dbbeaeddba59451d0e",
     "included_issues": [64, 66]
   },
   "integrated_boundaries": {
@@ -23,10 +23,10 @@
   },
   "archive": {
     "format": "git-archive-tar",
-    "prefix": "tribe-bridge-a83188707282/",
-    "command": "git archive --format=tar --prefix=tribe-bridge-a83188707282/ --output=tribe-bridge-a83188707282-source.tar a83188707282ce48699668e06e4cd0a0f641d614 -- . ':(exclude)docs/release-candidate-receipt.json'",
-    "bytes": 808960,
-    "sha256": "cead67f1a635e8de58d15e624b16c36afb06a34663a6aed1cd41b030b023a091",
+    "prefix": "tribe-bridge-abff93700bc9/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-abff93700bc9/ --output=tribe-bridge-abff93700bc9-source.tar abff93700bc9906b9181f441b9d29a5747a192c1 -- . ':(exclude)docs/release-candidate-receipt.json'",
+    "bytes": 849920,
+    "sha256": "b2c90c8b3700fa9b8ae0821200ce3102df4e5034c4c5d8990fe23c18e2966d54",
     "receipt_in_archive": false,
     "receipt_note": "The archive excludes this path so it cannot contain a stale predecessor receipt or create a self-referential archive hash."
   },
@@ -59,10 +59,10 @@
   "suite": {
     "command": "python -W error::ResourceWarning -m unittest discover -s tests -q",
     "runs": [
-      {"python": "3.10.20", "tests": 130, "result": "pass"},
-      {"python": "3.11.15", "tests": 130, "result": "pass"},
-      {"python": "3.12.13", "tests": 130, "result": "pass"},
-      {"python": "3.13.14", "tests": 130, "result": "pass"}
+      {"python": "3.10.20", "tests": 144, "result": "pass"},
+      {"python": "3.11.15", "tests": 144, "result": "pass"},
+      {"python": "3.12.13", "tests": 144, "result": "pass"},
+      {"python": "3.13.14", "tests": 144, "result": "pass"}
     ],
     "reruns_used_as_evidence": false,
     "flakes_observed": false
