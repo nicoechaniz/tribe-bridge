@@ -36,8 +36,7 @@ _ESCAPED_BODY_BUDGET = 3500
 # Human-readable messages may still span a few Telegram posts.  Beyond this
 # bound the mirror emits one content-addressed notice instead of turning a
 # machine artifact into a wall of opaque fragments.
-MAX_MIRROR_PARTS = 8
-_OPAQUE_ARTIFACT_MIN_CHARS = 7000
+MAX_MIRROR_PARTS = 4
 
 
 class MirrorDeliveryError(RuntimeError):
@@ -365,22 +364,6 @@ class TelegramPolicy:
             start = end
         return chunks
 
-    @staticmethod
-    def _looks_like_opaque_artifact(text: str) -> bool:
-        if len(text) < _OPAQUE_ARTIFACT_MIN_CHARS:
-            return False
-        compact = "".join(text.split())
-        if not compact:
-            return False
-        base64_chars = frozenset(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-            "0123456789+/=_-"
-        )
-        opaque_fraction = sum(char in base64_chars for char in compact) / len(
-            compact
-        )
-        return opaque_fraction >= 0.90
-
     @classmethod
     def _suppressed_artifact_notice(
         cls, text: str, envelope: dict[str, Any]
@@ -389,7 +372,7 @@ class TelegramPolicy:
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         return (
             f"<b>{html.escape(provenance)}</b>\n"
-            "Large or opaque payload omitted from Telegram; use an approved "
+            "Oversized payload omitted from Telegram; use an approved "
             f"artifact channel · characters {len(text)} · sha256 {digest}"
         )
 
@@ -412,9 +395,7 @@ class TelegramPolicy:
         provenance = self._provenance(envelope)
         text = payload["text"]
         chunks = self._chunk_text(text)
-        if len(chunks) > MAX_MIRROR_PARTS or self._looks_like_opaque_artifact(
-            text
-        ):
+        if len(chunks) > MAX_MIRROR_PARTS:
             return [self._suppressed_artifact_notice(text, envelope)]
         if len(chunks) == 1:
             header = f"<b>{html.escape(provenance)}</b>\n"

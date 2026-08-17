@@ -77,11 +77,12 @@ only the endpoint, message ID, failed part index, total parts and a stable error
 code; it never includes plaintext or credentials.
 
 The mirror is a human-observation path, not an artifact transport. More than
-eight rendered parts, or a large opaque encoding, becomes one notice containing
-provenance, character count and plaintext digest. The corpus or bundle itself
-must move through a separately approved artifact channel. This bounds an
-incident like a 35-part delivery to one Telegram post rather than allowing
-every broker retry to replay a long prefix.
+four rendered parts becomes one notice containing provenance, character count
+and plaintext digest. This is a deterministic size boundary, not a heuristic
+content classifier. The corpus or bundle itself must move through a separately
+approved artifact channel. This bounds an incident like a 35-part delivery to
+one Telegram post rather than allowing every broker retry to replay a long
+prefix.
 
 ## SQLite journal gate
 

@@ -575,7 +575,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
 
         # Long messages are chunked under the Telegram limit, with part
         # markers, and reconstruct the original payload text exactly.
-        long_text = "línea con <etiquetas> & ampersand\n" * 500
+        long_text = "línea con <etiquetas> & ampersand\n" * 250
         parts = policy.render_parts(make_payload(long_text), envelope)
         self.assertGreater(len(parts), 1)
         rebuilt = []
@@ -695,7 +695,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
         self.assertEqual(failure["error"], "mirror_progress_ambiguous")
         self.assertNotIn("content", json.dumps(failure))
 
-    def test_mirror_suppresses_large_or_opaque_artifacts(self):
+    def test_mirror_bounds_multipart_and_preserves_readable_prose(self):
         policy = TelegramPolicy.from_values(
             chat_ids=[-1001],
             user_ids=[7],
@@ -726,16 +726,29 @@ class TribeV1IntegrationTests(unittest.TestCase):
         self.assertNotIn(large[:100], parts[0])
         self.assertLessEqual(len(parts[0]), TELEGRAM_MESSAGE_LIMIT)
 
-        # A nearly-base64 payload stays on the artifact-safe path even when
-        # punctuation keeps it at the multipart ceiling rather than above it.
-        opaque = ("A" * 47 + ":") * 583
-        self.assertLessEqual(
-            len(policy._chunk_text(opaque)), MAX_MIRROR_PARTS
-        )
+        # Separator tricks cannot evade the deterministic part-count cap.
+        opaque = ("A" * 8 + ":") * 3110
+        self.assertGreater(len(policy._chunk_text(opaque)), MAX_MIRROR_PARTS)
         parts = policy.render_parts(make_payload(opaque), envelope)
         self.assertEqual(len(parts), 1)
         self.assertIn("payload omitted", parts[0])
         self.assertNotIn(opaque[:100], parts[0])
+
+        # Ordinary multi-part prose remains visible; it is not classified by
+        # character alphabet or other content heuristics.
+        prose = (
+            "This is a perfectly readable coordination message with "
+            "ordinary words. "
+        ) * 120
+        raw_chunks = policy._chunk_text(prose)
+        self.assertGreater(len(raw_chunks), 1)
+        self.assertLessEqual(len(raw_chunks), MAX_MIRROR_PARTS)
+        parts = policy.render_parts(make_payload(prose), envelope)
+        self.assertEqual(len(parts), len(raw_chunks))
+        self.assertEqual(
+            "".join(html.unescape(part.split("\n", 1)[1]) for part in parts),
+            prose,
+        )
 
     def test_mirror_policy_rejects_malformed_transparency_allowlists(self):
         base = {
