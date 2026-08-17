@@ -517,7 +517,7 @@ def build_forward_recovery(
         raise RotationError("recovery base is not a valid signed directory") from exc
     if not compromised_kids:
         raise RotationError("forward recovery requires explicit key IDs")
-    key_owners: dict[str, tuple[str, str]] = {}
+    key_owners: dict[str, tuple[str, str, str]] = {}
     for agent in signed_rotation["agents"]:
         for purpose in ("signing_keys", "encryption_keys"):
             for key in agent[purpose]:
@@ -529,13 +529,28 @@ def build_forward_recovery(
                     raise RotationError(
                         "forward recovery key ownership is ambiguous"
                     )
-                key_owners[kid] = (agent["id"], purpose)
+                key_owners[kid] = (
+                    agent["id"],
+                    purpose,
+                    key["public_key"],
+                )
     if not compromised_kids <= set(key_owners):
         raise RotationError("forward recovery names an unknown key")
+    compromised_material: dict[str, set[str]] = {
+        "signing_keys": set(),
+        "encryption_keys": set(),
+    }
+    for kid in compromised_kids:
+        _owner, purpose, public_key = key_owners[kid]
+        compromised_material[purpose].add(public_key)
+    # Public keys are canonical base64url in the already validated base, so
+    # equality here is equality of the decoded 32-byte material.  Keep the two
+    # purpose sets separate: identical bytes do not alias Ed25519 and X25519.
     compromised_encryption_owners = {
-        key_owners[kid][0]
-        for kid in compromised_kids
-        if key_owners[kid][1] == "encryption_keys"
+        owner
+        for owner, purpose, public_key in key_owners.values()
+        if purpose == "encryption_keys"
+        and public_key in compromised_material["encryption_keys"]
     }
     candidate = copy.deepcopy(signed_rotation)
     candidate["directory_epoch"] += 1
@@ -554,7 +569,12 @@ def build_forward_recovery(
     for agent in candidate["agents"]:
         for purpose in ("signing_keys", "encryption_keys"):
             for key in agent[purpose]:
-                if key["kid"] in compromised_kids:
+                if (
+                    key["kid"] in compromised_kids
+                    or key["public_key"] in compromised_material[purpose]
+                ):
+                    # A renamed/re-epoched alias is the same compromised
+                    # cryptographic authority and must not remain usable.
                     key["status"] = "revoked"
                     # A key revoked exactly at/before not-before never had a
                     # non-empty authority window to close.  Status revocation
@@ -604,6 +624,7 @@ def build_forward_recovery(
         for purpose in ("signing_keys", "encryption_keys"):
             if not any(
                 key["status"] == "active"
+                and key["public_key"] not in compromised_material[purpose]
                 and key["not_before_ms"] <= now_ms
                 and (
                     key["not_after_ms"] is None

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 import sys
 
-from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives.asymmetric import ed25519, x25519
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -819,7 +819,17 @@ class RotationTests(unittest.TestCase):
             key for key in alice["encryption_keys"] if key["epoch"] == 2
         )
         encryption_3 = copy.deepcopy(encryption_2)
-        encryption_3.update({"kid": "alice/enc/3", "epoch": 3})
+        encryption_3.update(
+            {
+                "kid": "alice/enc/3",
+                "epoch": 3,
+                "public_key": b64url(
+                    x25519.X25519PrivateKey.generate()
+                    .public_key()
+                    .public_bytes_raw()
+                ),
+            }
+        )
         alice["encryption_keys"].append(encryption_3)
         signed = sign_directory(candidate)
         validate_directory(
@@ -845,6 +855,146 @@ class RotationTests(unittest.TestCase):
         validate_unsigned_directory_candidate(
             recovered, self.material["roots"], now_ms=self.activation
         )
+
+    def test_same_material_aliases_cannot_cover_compromised_keys(self):
+        for purpose, compromised_kid, alias_kid in (
+            ("signing_keys", "alice/sig/2", "alice/sig/3"),
+            ("encryption_keys", "alice/enc/2", "alice/enc/3"),
+        ):
+            with self.subTest(purpose=purpose):
+                candidate, _ = self.compose()
+                alice = next(
+                    agent
+                    for agent in candidate["agents"]
+                    if agent["id"] == "alice"
+                )
+                compromised = next(
+                    key
+                    for key in alice[purpose]
+                    if key["kid"] == compromised_kid
+                )
+                alias = copy.deepcopy(compromised)
+                compromised["status"] = "retired"
+                alias.update(
+                    {"kid": alias_kid, "epoch": 3, "status": "active"}
+                )
+                alice[purpose].append(alias)
+                signed = sign_directory(candidate)
+                validate_directory(
+                    signed,
+                    self.material["roots"],
+                    now_ms=self.activation + 1,
+                )
+
+                with self.assertRaisesRegex(
+                    RotationError,
+                    "requires a pre-existing uncompromised successor",
+                ):
+                    build_forward_recovery(
+                        signed,
+                        self.material["roots"],
+                        {compromised_kid},
+                        now_ms=self.activation + 1,
+                    )
+
+    def test_multiple_compromised_kids_revoke_alias_with_independent_coverage(
+        self,
+    ):
+        candidate, _ = self.compose()
+        alice = next(
+            agent for agent in candidate["agents"] if agent["id"] == "alice"
+        )
+        encryption_2 = next(
+            key for key in alice["encryption_keys"] if key["epoch"] == 2
+        )
+        alias = copy.deepcopy(encryption_2)
+        alias.update({"kid": "alice/enc/3", "epoch": 3})
+        independent = copy.deepcopy(encryption_2)
+        independent.update(
+            {
+                "kid": "alice/enc/4",
+                "epoch": 4,
+                "public_key": b64url(
+                    x25519.X25519PrivateKey.generate()
+                    .public_key()
+                    .public_bytes_raw()
+                ),
+            }
+        )
+        alice["encryption_keys"].extend([alias, independent])
+        signed = sign_directory(candidate)
+
+        recovered = build_forward_recovery(
+            signed,
+            self.material["roots"],
+            {"alice/enc/1", "alice/enc/2"},
+            now_ms=self.activation + 1,
+        )
+        recovered_alice = next(
+            agent for agent in recovered["agents"] if agent["id"] == "alice"
+        )
+        statuses = {
+            key["kid"]: key["status"]
+            for key in recovered_alice["encryption_keys"]
+        }
+        self.assertEqual(statuses["alice/enc/1"], "revoked")
+        self.assertEqual(statuses["alice/enc/2"], "revoked")
+        self.assertEqual(statuses["alice/enc/3"], "revoked")
+        self.assertEqual(statuses["alice/enc/4"], "active")
+        alice_audiences = [
+            audience
+            for audience in recovered["audiences"]
+            if audience["type"] == "direct" and audience["id"] == "alice"
+        ]
+        self.assertEqual(
+            [(item["epoch"], item["status"]) for item in alice_audiences],
+            [(1, "retired"), (2, "active")],
+        )
+
+    def test_compromised_material_does_not_cross_key_purposes(self):
+        candidate, _ = self.compose()
+        alice = next(
+            agent for agent in candidate["agents"] if agent["id"] == "alice"
+        )
+        signing_2 = next(
+            key for key in alice["signing_keys"] if key["epoch"] == 2
+        )
+        signing_3 = copy.deepcopy(signing_2)
+        signing_3.update(
+            {
+                "kid": "alice/sig/3",
+                "epoch": 3,
+                "public_key": b64url(
+                    ed25519.Ed25519PrivateKey.generate()
+                    .public_key()
+                    .public_bytes_raw()
+                ),
+            }
+        )
+        alice["signing_keys"].append(signing_3)
+        encryption_2 = next(
+            key for key in alice["encryption_keys"] if key["epoch"] == 2
+        )
+        encryption_2["public_key"] = signing_2["public_key"]
+        signed = sign_directory(candidate)
+        original_audiences = copy.deepcopy(signed["audiences"])
+
+        recovered = build_forward_recovery(
+            signed,
+            self.material["roots"],
+            {"alice/sig/2"},
+            now_ms=self.activation + 1,
+        )
+        recovered_alice = next(
+            agent for agent in recovered["agents"] if agent["id"] == "alice"
+        )
+        recovered_encryption_2 = next(
+            key
+            for key in recovered_alice["encryption_keys"]
+            if key["kid"] == "alice/enc/2"
+        )
+        self.assertEqual(recovered_encryption_2["status"], "active")
+        self.assertEqual(recovered["audiences"], original_audiences)
 
 
 if __name__ == "__main__":

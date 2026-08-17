@@ -1240,6 +1240,13 @@ def apply_package(
             elif previous_epoch + 1 != manifest["directory_epoch"]:
                 raise ProvisioningError("provisioning high-water discontinuity")
             elif (
+                target_high_water["roots_sha256"]
+                != previous_high_water["roots_sha256"]
+            ):
+                raise ProvisioningError(
+                    "governance roots change requires reprovision authority"
+                )
+            elif (
                 snapshot["previous_sha256"]
                 != previous_high_water["directory_sha256"]
             ):
