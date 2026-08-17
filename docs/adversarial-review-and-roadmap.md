@@ -60,8 +60,9 @@ review before merge:
    by SHA-256 and records rather than crosses the remaining human gates.
 7. Telegram multipart retry persists the deterministic rendering and next
    unconfirmed part, never replays the durable prefix, reports the exact failed
-   part without plaintext, and collapses 35-part or opaque artifacts to one
-   content-addressed human notice. The current part's response-loss ambiguity
+   part without plaintext, and deterministically collapses every payload above
+   four parts to one content-addressed human notice without attempting to
+   classify its contents. The current part's response-loss ambiguity
    is explicit rather than overstated as global exactly-once delivery.
 8. An independent adversarial reviewer approves the exact candidate hash before
    merge. The author does not self-approve or bypass branch protection.

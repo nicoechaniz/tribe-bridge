@@ -27,8 +27,8 @@ locality and explicit Telegram visibility.
   `(sender_id, message_id)` idempotency key.
 - Telegram multipart retries resume from a durable local cursor and never
   replay the recorded prefix. The current part can remain ambiguous because
-  Telegram has no request idempotency key. Payloads beyond eight parts and
-  large opaque encodings produce one hash-and-provenance notice instead.
+  Telegram has no request idempotency key. Payloads beyond four parts produce
+  one hash-and-provenance notice instead; no content classifier decides this.
 - Tribe ACK proves only Tribe delivery state. Matrix intake and semantic
   receipts are separate authenticated facts.
 - WAL is forbidden on SQLite versions affected by the 2026 WAL-reset bug.

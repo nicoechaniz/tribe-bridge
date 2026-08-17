@@ -67,10 +67,10 @@ and the consolidated
 was offline or while a sender crashed around an ambiguous response.
 
 The Telegram mirror persists a deterministic per-part cursor before releasing
-a retryable claim, so a durably confirmed prefix is not sent again. Payloads
-that would exceed eight Telegram posts, and large opaque encodings, are
-replaced by one provenance-and-hash notice; corpora and machine artifacts
-belong in an approved artifact channel rather than the human-message mirror.
+a retryable claim, so a durably confirmed prefix is not sent again. Any
+payload that would exceed four Telegram posts is replaced by one
+provenance-and-hash notice; corpora and machine artifacts belong in an approved
+artifact channel rather than the human-message mirror.
 
 ## Requirements
 
