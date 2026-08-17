@@ -1,18 +1,18 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-17T01:34:36Z",
+  "generated_at": "2026-08-17T06:53:56Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "d433f81cd632020c6c9e3d06040e6086523cd502ec9f0ad501ce6f5d83f7e421"
+    "sha256": "8109a81418c9f053fd5a5d1d0f0789e89c362dac09f4fdc9753385731d7f9864"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
     "pull_request": 65,
     "issue": 64,
-    "commit": "9c4f14f613657ea1e6e6c1805d4f869ae93d082f",
-    "tree": "38361d248866a84a6e4a45a2d83af56e7c549f66",
+    "commit": "a83188707282ce48699668e06e4cd0a0f641d614",
+    "tree": "a7d849b0b09ec66ff7a5c8143d70127797243da6",
     "included_issues": [64, 66]
   },
   "integrated_boundaries": {
@@ -23,10 +23,10 @@
   },
   "archive": {
     "format": "git-archive-tar",
-    "prefix": "tribe-bridge-9c4f14f61365/",
-    "command": "git archive --format=tar --prefix=tribe-bridge-9c4f14f61365/ --output=tribe-bridge-9c4f14f61365-source.tar 9c4f14f613657ea1e6e6c1805d4f869ae93d082f -- . ':(exclude)docs/release-candidate-receipt.json'",
-    "bytes": 788480,
-    "sha256": "e21a63fabdc3d42b9ce17771e096a8642a07d6a12e233c71e73d2ed597933acf",
+    "prefix": "tribe-bridge-a83188707282/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-a83188707282/ --output=tribe-bridge-a83188707282-source.tar a83188707282ce48699668e06e4cd0a0f641d614 -- . ':(exclude)docs/release-candidate-receipt.json'",
+    "bytes": 808960,
+    "sha256": "cead67f1a635e8de58d15e624b16c36afb06a34663a6aed1cd41b030b023a091",
     "receipt_in_archive": false,
     "receipt_note": "The archive excludes this path so it cannot contain a stale predecessor receipt or create a self-referential archive hash."
   },
@@ -59,10 +59,10 @@
   "suite": {
     "command": "python -W error::ResourceWarning -m unittest discover -s tests -q",
     "runs": [
-      {"python": "3.10.20", "tests": 124, "result": "pass"},
-      {"python": "3.11.15", "tests": 124, "result": "pass"},
-      {"python": "3.12.13", "tests": 124, "result": "pass"},
-      {"python": "3.13.14", "tests": 124, "result": "pass"}
+      {"python": "3.10.20", "tests": 130, "result": "pass"},
+      {"python": "3.11.15", "tests": 130, "result": "pass"},
+      {"python": "3.12.13", "tests": 130, "result": "pass"},
+      {"python": "3.13.14", "tests": 130, "result": "pass"}
     ],
     "reruns_used_as_evidence": false,
     "flakes_observed": false
@@ -73,11 +73,14 @@
       "version": "0.16.3",
       "scope": [
         "src/tribe_directory_v1.py",
+        "src/tribe_broker_v1.py",
+        "src/tribe_service_v1.py",
         "src/tribe_rotation_v1.py",
         "src/tribe_provisioning_v1.py",
         "src/tribe_mirror_v1.py",
         "scripts/mirror_v1.py",
         "tests/test_tribe_v1_integration.py",
+        "tests/test_tribe_broker_v1.py",
         "tests/test_key_rotation_v1.py",
         "tests/test_provisioning_v1.py"
       ],
@@ -88,11 +91,14 @@
       "version": "2.3.1",
       "scope": [
         "src/tribe_directory_v1.py",
+        "src/tribe_broker_v1.py",
+        "src/tribe_service_v1.py",
         "src/tribe_rotation_v1.py",
         "src/tribe_provisioning_v1.py",
         "src/tribe_mirror_v1.py",
         "scripts/mirror_v1.py",
         "tests/test_tribe_v1_integration.py",
+        "tests/test_tribe_broker_v1.py",
         "tests/test_key_rotation_v1.py",
         "tests/test_provisioning_v1.py"
       ],
