@@ -1,6 +1,7 @@
 import copy
 import html
 import json
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -660,22 +661,32 @@ class TribeV1IntegrationTests(unittest.TestCase):
         self.assertEqual(sent, [])
 
     def test_mirror_progress_failure_is_reported_as_ambiguous(self):
-        class FailingProgress(MirrorProgressStore):
-            def advance(self, *args, **kwargs):
-                raise RuntimeError("simulated durable cursor failure")
-
-        progress = FailingProgress(self.root / "mirror-progress-failure.sqlite")
+        progress_path = self.root / "mirror-progress-failure.sqlite"
+        progress = MirrorProgressStore(progress_path)
         sent = []
-        with self.assertRaises(MirrorDeliveryError) as raised:
-            deliver_rendered_parts(
-                progress,
-                sender_id="alice",
-                message_id="019f0000-0000-7000-8000-000000000069",
-                envelope_sha256="c" * 64,
-                parts=["content must not enter the error record"],
-                send=sent.append,
-                now_ms=NOW,
-            )
+        lock_holder = None
+
+        def send_and_lock(part):
+            nonlocal lock_holder
+            sent.append(part)
+            lock_holder = sqlite3.connect(progress_path, isolation_level=None)
+            lock_holder.execute("BEGIN EXCLUSIVE")
+
+        try:
+            with self.assertRaises(MirrorDeliveryError) as raised:
+                deliver_rendered_parts(
+                    progress,
+                    sender_id="alice",
+                    message_id="019f0000-0000-7000-8000-000000000069",
+                    envelope_sha256="c" * 64,
+                    parts=["content must not enter the error record"],
+                    send=send_and_lock,
+                    now_ms=NOW,
+                )
+        finally:
+            if lock_holder is not None:
+                lock_holder.execute("ROLLBACK")
+                lock_holder.close()
         self.assertEqual(len(sent), 1)
         failure = raised.exception.failure_record(
             endpoint="https://broker.invalid",
@@ -684,7 +695,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
         self.assertEqual(failure["error"], "mirror_progress_ambiguous")
         self.assertNotIn("content", json.dumps(failure))
 
-    def test_mirror_suppresses_large_opaque_artifacts(self):
+    def test_mirror_suppresses_large_or_opaque_artifacts(self):
         policy = TelegramPolicy.from_values(
             chat_ids=[-1001],
             user_ids=[7],
@@ -706,14 +717,25 @@ class TribeV1IntegrationTests(unittest.TestCase):
                 classification="private",
             )
 
-        opaque = "A" * (3500 * 35)
-        self.assertEqual(len(policy._chunk_text(opaque)), 35)
-        parts = policy.render_parts(make_payload(opaque), envelope)
+        large = ("readable words " * 4 + "!?:;,./ " * 20) * 800
+        self.assertGreater(len(policy._chunk_text(large)), MAX_MIRROR_PARTS)
+        parts = policy.render_parts(make_payload(large), envelope)
         self.assertEqual(len(parts), 1)
         self.assertIn("payload omitted", parts[0])
         self.assertIn("sha256", parts[0])
-        self.assertNotIn(opaque[:100], parts[0])
+        self.assertNotIn(large[:100], parts[0])
         self.assertLessEqual(len(parts[0]), TELEGRAM_MESSAGE_LIMIT)
+
+        # A nearly-base64 payload stays on the artifact-safe path even when
+        # punctuation keeps it at the multipart ceiling rather than above it.
+        opaque = ("A" * 47 + ":") * 583
+        self.assertLessEqual(
+            len(policy._chunk_text(opaque)), MAX_MIRROR_PARTS
+        )
+        parts = policy.render_parts(make_payload(opaque), envelope)
+        self.assertEqual(len(parts), 1)
+        self.assertIn("payload omitted", parts[0])
+        self.assertNotIn(opaque[:100], parts[0])
 
     def test_mirror_policy_rejects_malformed_transparency_allowlists(self):
         base = {
