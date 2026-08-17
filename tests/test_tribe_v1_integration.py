@@ -9,6 +9,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -125,6 +126,32 @@ class TribeV1IntegrationTests(unittest.TestCase):
         ) as response:
             self.assertEqual(response.status, 200)
         return service, endpoint
+
+    def http_post_wrapper(self, endpoint, path, wrapper):
+        request = urllib.request.Request(
+            endpoint + path,
+            data=protocol.canonical_json(wrapper),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            try:
+                return exc.code, json.loads(exc.read())
+            finally:
+                exc.close()
+
+    @staticmethod
+    def broker_counts(service):
+        with closing(sqlite3.connect(service.broker.path)) as connection:
+            return (
+                connection.execute("SELECT count(*) FROM request_replays").fetchone()[
+                    0
+                ],
+                connection.execute("SELECT count(*) FROM messages").fetchone()[0],
+            )
 
     def direct_envelope(self, ttl_ms=60_000):
         payload = message_payload(
@@ -945,20 +972,91 @@ class TribeV1IntegrationTests(unittest.TestCase):
                     path="/v1/messages",
                     now_ms=NOW,
                 )
-                request = urllib.request.Request(
-                    endpoint + "/v1/messages",
-                    data=protocol.canonical_json(wrapper),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                with self.assertRaises(urllib.error.HTTPError) as raised:
-                    urllib.request.urlopen(request, timeout=5)
-                self.assertEqual(raised.exception.code, 400)
-                self.assertEqual(
-                    json.loads(raised.exception.read()),
-                    {"error": "invalid_request"},
-                )
-        self.assertEqual(service.broker.metrics()["messages"], 0)
+                for attempt in range(2):
+                    with self.subTest(label=label, attempt=attempt):
+                        self.assertEqual(
+                            self.http_post_wrapper(
+                                endpoint, "/v1/messages", wrapper
+                            ),
+                            (400, {"error": "invalid_request"}),
+                        )
+        self.assertEqual(self.broker_counts(service), (0, 0))
+
+    def test_malformed_claims_and_acks_do_not_consume_request_replay(self):
+        service, endpoint = self.serve("malformed-routes")
+        cases = (
+            (
+                "/v1/claims",
+                self.worker,
+                {"recipient_id": "worker@localhost", "limit": 3},
+            ),
+            (
+                "/v1/claims",
+                self.worker,
+                {
+                    "recipient_id": "worker@localhost",
+                    "limit": "3",
+                    "lease_ms": 60_000,
+                },
+            ),
+            (
+                "/v1/claims",
+                self.worker,
+                {
+                    "recipient_id": "worker@localhost",
+                    "limit": 3,
+                    "lease_ms": True,
+                },
+            ),
+            ("/v1/acks", self.worker, {}),
+            ("/v1/acks", self.worker, {"receiver_id": []}),
+        )
+        for path, keys, body in cases:
+            wrapper = wrap_request(
+                body,
+                keys=keys,
+                method="POST",
+                path=path,
+                now_ms=NOW,
+            )
+            for attempt in range(2):
+                with self.subTest(path=path, body=body, attempt=attempt):
+                    self.assertEqual(
+                        self.http_post_wrapper(endpoint, path, wrapper),
+                        (400, {"error": "invalid_request"}),
+                    )
+        self.assertEqual(self.broker_counts(service), (0, 0))
+
+    def test_valid_authenticated_request_records_replay_before_operation(self):
+        service, endpoint = self.serve("valid-replay")
+        real_enqueue = service.broker.enqueue
+        observed_before_enqueue = []
+
+        def enqueue_after_replay(envelope, context, *, received_at_ms=None):
+            observed_before_enqueue.append(self.broker_counts(service))
+            return real_enqueue(
+                envelope,
+                context,
+                received_at_ms=received_at_ms,
+            )
+
+        service.broker.enqueue = enqueue_after_replay
+        wrapper = wrap_request(
+            self.direct_envelope(),
+            keys=self.alice,
+            method="POST",
+            path="/v1/messages",
+            now_ms=NOW,
+        )
+        status, receipt = self.http_post_wrapper(endpoint, "/v1/messages", wrapper)
+        self.assertEqual(status, 201)
+        self.assertFalse(receipt["duplicate"])
+        self.assertEqual(observed_before_enqueue, [(1, 0)])
+        self.assertEqual(
+            self.http_post_wrapper(endpoint, "/v1/messages", wrapper),
+            (409, {"error": "request_replay"}),
+        )
+        self.assertEqual(self.broker_counts(service), (1, 1))
 
     def test_http_direct_failure_falls_back_and_outbox_recovers(self):
         _service, hub = self.serve("hub")

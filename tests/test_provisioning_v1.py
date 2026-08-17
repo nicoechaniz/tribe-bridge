@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -472,6 +473,105 @@ class ProvisioningTests(unittest.TestCase):
             )
         self.assertEqual(tree_snapshot(existing), before_existing)
 
+    def test_fresh_local_preflight_failures_create_nothing_and_close_fds(self):
+        package = self.tmp / "package"
+        self.build(package)
+
+        attacks = (
+            (
+                self.tmp / "missing-keys.json",
+                frozenset({"alice"}),
+                "missing-keys",
+                FileNotFoundError,
+                "No such file or directory",
+            ),
+            (
+                self.material["bundles"]["worker@localhost"],
+                frozenset({"alice"}),
+                "wrong-keys",
+                ProvisioningError,
+                "private bundle belongs to another agent",
+            ),
+            (
+                self.material["bundles"]["alice"],
+                frozenset(),
+                "wrong-locality",
+                ProvisioningError,
+                "exact harness authorization",
+            ),
+        )
+        for keys, locality, label, error, pattern in attacks:
+            with self.subTest(label=label):
+                destination = self.tmp / f"client-{label}"
+                before = tree_snapshot(self.tmp)
+                descriptors_before = len(os.listdir("/proc/self/fd"))
+                with self.assertRaisesRegex(error, pattern):
+                    apply_package(
+                        package,
+                        self.public_authority,
+                        keys,
+                        destination,
+                        authorized_local_agent_ids=locality,
+                        now_ms=NOW,
+                    )
+                self.assertFalse(os.path.lexists(destination))
+                self.assertEqual(tree_snapshot(self.tmp), before)
+                self.assertEqual(
+                    len(os.listdir("/proc/self/fd")), descriptors_before
+                )
+
+        destination = self.tmp / "client-no-descriptor-path"
+        before = tree_snapshot(self.tmp)
+        descriptors_before = len(os.listdir("/proc/self/fd"))
+        with mock.patch(
+            "tribe_provisioning_v1._descriptor_directory_path",
+            side_effect=ProvisioningError(
+                "stable destination descriptors are unavailable"
+            ),
+        ):
+            with self.assertRaisesRegex(
+                ProvisioningError, "stable destination descriptors"
+            ):
+                apply_package(
+                    package,
+                    self.public_authority,
+                    self.material["bundles"]["alice"],
+                    destination,
+                    authorized_local_agent_ids=frozenset({"alice"}),
+                    now_ms=NOW,
+                )
+        self.assertFalse(os.path.lexists(destination))
+        self.assertEqual(tree_snapshot(self.tmp), before)
+        self.assertEqual(len(os.listdir("/proc/self/fd")), descriptors_before)
+
+        destination = self.tmp / "nested" / "client-late-descriptor-failure"
+        before = tree_snapshot(self.tmp)
+        descriptors_before = len(os.listdir("/proc/self/fd"))
+        with mock.patch(
+            "tribe_provisioning_v1._descriptor_directory_path",
+            side_effect=(
+                Path("/proc/self/fd"),
+                ProvisioningError(
+                    "stable destination descriptors are unavailable"
+                ),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                ProvisioningError, "stable destination descriptors"
+            ):
+                apply_package(
+                    package,
+                    self.public_authority,
+                    self.material["bundles"]["alice"],
+                    destination,
+                    authorized_local_agent_ids=frozenset({"alice"}),
+                    now_ms=NOW,
+                )
+        self.assertFalse(os.path.lexists(destination))
+        self.assertFalse((self.tmp / "nested").exists())
+        self.assertEqual(tree_snapshot(self.tmp), before)
+        self.assertEqual(len(os.listdir("/proc/self/fd")), descriptors_before)
+
     def test_writable_parent_cannot_swap_epoch_two_for_epoch_one(self):
         package1 = self.tmp / "package-1"
         self.build(package1)
@@ -627,6 +727,69 @@ class ProvisioningTests(unittest.TestCase):
         self.assertEqual(tree_snapshot(destination), replacement_before)
         self.assertFalse((destination / "provision-journal.json").exists())
         self.assertTrue((renamed / "provision-journal.json").exists())
+
+    def test_parent_and_intermediate_ancestor_swaps_are_detected(self):
+        package1 = self.tmp / "package-1"
+        self.build(package1)
+        successor = signed_successor(self.material["snapshot"], NOW + 1)
+        directory2 = self.tmp / "directory-2.json"
+        directory2.write_text(json.dumps(successor))
+        package2 = self.tmp / "package-2"
+        self.build(package2, directory_path=directory2, now_ms=NOW + 1)
+
+        for level in ("direct-parent", "intermediate"):
+            with self.subTest(level=level):
+                base = self.tmp / level
+                ancestor = base / "ancestor"
+                parent = ancestor / "parent"
+                destination = parent / "client"
+                apply_package(
+                    package1,
+                    self.public_authority,
+                    self.material["bundles"]["alice"],
+                    destination,
+                    authorized_local_agent_ids=frozenset({"alice"}),
+                    now_ms=NOW,
+                )
+                epoch1 = self.tmp / f"{level}-epoch-1"
+                shutil.copytree(destination, epoch1)
+                replacement_before = tree_snapshot(epoch1)
+                target = parent if level == "direct-parent" else ancestor
+                detached = target.with_name(f"{target.name}-detached")
+                suffix = destination.relative_to(target)
+
+                def swap(phase):
+                    if phase == "directory-installed":
+                        target.rename(detached)
+                        replacement = target / suffix
+                        replacement.parent.mkdir(parents=True, mode=0o700)
+                        shutil.copytree(epoch1, replacement)
+
+                descriptors_before = len(os.listdir("/proc/self/fd"))
+                with self.assertRaisesRegex(
+                    ProvisioningError, "destination changed during apply"
+                ):
+                    apply_package(
+                        package2,
+                        self.public_authority,
+                        self.material["bundles"]["alice"],
+                        destination,
+                        authorized_local_agent_ids=frozenset({"alice"}),
+                        now_ms=NOW + 1,
+                        fault_hook=swap,
+                    )
+
+                self.assertEqual(tree_snapshot(destination), replacement_before)
+                self.assertFalse(
+                    (destination / "provision-journal.json").exists()
+                )
+                detached_destination = detached / suffix
+                self.assertTrue(
+                    (detached_destination / "provision-journal.json").exists()
+                )
+                self.assertEqual(
+                    len(os.listdir("/proc/self/fd")), descriptors_before
+                )
 
     def test_next_epoch_must_descend_from_high_water_without_installed_directory(self):
         package1 = self.tmp / "package-1"
