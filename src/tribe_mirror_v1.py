@@ -248,7 +248,10 @@ def deliver_rendered_parts(
                 delivered_index=index,
                 now_ms=now_ms,
             )
-        except RuntimeError as exc:
+        # Once the external send returns, every local failure leaves the
+        # current part ambiguous. Translate the whole non-fatal boundary,
+        # including SQLite lock/full errors, into the structured retry path.
+        except Exception as exc:
             raise MirrorDeliveryError(
                 index + 1,
                 len(parts),
@@ -376,7 +379,7 @@ class TelegramPolicy:
         opaque_fraction = sum(char in base64_chars for char in compact) / len(
             compact
         )
-        return opaque_fraction >= 0.98
+        return opaque_fraction >= 0.90
 
     @classmethod
     def _suppressed_artifact_notice(
