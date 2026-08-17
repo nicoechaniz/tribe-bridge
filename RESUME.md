@@ -6,16 +6,17 @@ service, host state, directory epoch, key custody or deployment is claimed by
 this checkpoint. Treat infrastructure references in historical evidence as
 non-current until a separate exact operational gate is approved.
 
-Last reconciled: 2026-08-16.
+Last reconciled: 2026-08-17.
 
 ## Exact integrated boundary
 
 - Tribe merged baseline: commit
   `187c61d881e6de830a029027144193645f2c7f62`, tree
   `84da16611be62581d9a049d9f567652c4cc4e61b`.
-- Tribe PR #65 carries the issue #64 release-candidate lineage. Its exact
-  qualified source boundary and independent review state are recorded in the
-  release-candidate receipt and PR checks; no earlier candidate is current.
+- Tribe PR #65 carries the issue #64 release-candidate lineage and the issue
+  #66 mirror-retry repair. Its exact qualified source boundary and independent
+  review state are recorded in the release-candidate receipt and PR checks; no
+  earlier candidate is current.
 - Matrix is merged at commit
   `09414d6edd9586f539be8272c4979d0b36c86b87`, tree
   `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`.
@@ -56,11 +57,14 @@ rotation and recovery tests; they do not authorize a live rotation.
 
 1. Qualify the final PR #65 head from a clean environment across Python
    3.10-3.13 and verify its content-addressed receipt.
-2. Obtain independent review on that exact head and merge only after the issue
-   claim, PR evidence and required checks agree.
-3. Keep issues #56 and #59 open for live human gates, or supersede them only
+2. Reproduce the issue #66 retry cases: no replay of the durably recorded
+   multipart prefix, one notice for a 35-part artifact, and structured failure
+   output without payload content.
+3. Obtain independent review on that exact head and merge only after both issue
+   claims, PR evidence and required checks agree.
+4. Keep issues #56 and #59 open for live human gates, or supersede them only
    with explicit traceability.
-4. Do not activate, publish, provision a participant, create real custody,
+5. Do not activate, publish, provision a participant, create real custody,
    install services/timers, contact anyone or archive Tribe without a separate
    content-addressed plan and authorization.
 
