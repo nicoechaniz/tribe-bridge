@@ -58,15 +58,22 @@ def tree_snapshot(root):
     return result
 
 
-def signed_successor(snapshot, now_ms, *, previous_sha256=None):
+def signed_successor(
+    snapshot,
+    now_ms,
+    *,
+    previous_sha256=None,
+    governance_private=None,
+):
     value = build_next_epoch(snapshot, now_ms=now_ms, validity_days=30)
     if previous_sha256 is not None:
         value["previous_sha256"] = previous_sha256
+    signer = governance_private or signing_key(1)
     value["governance"]["signatures"] = [
         {
             "kid": "governance/root/1",
             "alg": "Ed25519",
-            "value": b64url(signing_key(1).sign(directory_preimage(value))),
+            "value": b64url(signer.sign(directory_preimage(value))),
         }
     ]
     return value
@@ -91,6 +98,7 @@ class ProvisioningTests(unittest.TestCase):
         package: Path,
         *,
         directory_path=None,
+        roots_path=None,
         agent_id="alice",
         routes=None,
         endpoints=None,
@@ -108,7 +116,7 @@ class ProvisioningTests(unittest.TestCase):
         return build_package(
             package,
             directory_path or self.material["directory_path"],
-            self.material["roots_path"],
+            roots_path or self.material["roots_path"],
             self.private_authority,
             provisioning_id=provisioning_id
             or f"synthetic-{agent_id.replace('@', '-')}",
@@ -830,6 +838,70 @@ class ProvisioningTests(unittest.TestCase):
             )
         self.assertEqual(high_water_path.read_bytes(), high_water_before)
         self.assertFalse((destination / "directory.json").exists())
+        self.assertFalse((destination / "provision-journal.json").exists())
+
+    def test_next_epoch_cannot_rotate_roots_when_installed_artifacts_are_missing(self):
+        package1 = self.tmp / "package-1"
+        self.build(package1)
+        destination = self.tmp / "client"
+        apply_package(
+            package1,
+            self.public_authority,
+            self.material["bundles"]["alice"],
+            destination,
+            authorized_local_agent_ids=frozenset({"alice"}),
+            now_ms=NOW,
+        )
+        high_water_path = destination / "provision-high-water.json"
+        high_water_before = high_water_path.read_bytes()
+
+        unrelated_governance = signing_key(77)
+        unrelated_roots = {
+            "schema": "tribe-governance-roots/v1",
+            "threshold": 1,
+            "keys": {
+                "governance/root/1": b64url(
+                    unrelated_governance.public_key().public_bytes_raw()
+                )
+            },
+        }
+        unrelated_roots_path = self.tmp / "unrelated-roots.json"
+        unrelated_roots_path.write_text(json.dumps(unrelated_roots))
+        successor = signed_successor(
+            self.material["snapshot"],
+            NOW + 1,
+            governance_private=unrelated_governance,
+        )
+        directory2 = self.tmp / "directory-2-unrelated-roots.json"
+        directory2.write_text(json.dumps(successor))
+        package2 = self.tmp / "package-2-unrelated-roots"
+        self.build(
+            package2,
+            directory_path=directory2,
+            roots_path=unrelated_roots_path,
+            now_ms=NOW + 1,
+        )
+
+        (destination / "directory.json").unlink()
+        (destination / "governance-roots.json").unlink()
+        (destination / "state" / "alice-directory-state.json").unlink()
+        tree_before = tree_snapshot(destination)
+
+        with self.assertRaisesRegex(
+            ProvisioningError,
+            "governance roots change requires reprovision authority",
+        ):
+            apply_package(
+                package2,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW + 1,
+            )
+
+        self.assertEqual(high_water_path.read_bytes(), high_water_before)
+        self.assertEqual(tree_snapshot(destination), tree_before)
         self.assertFalse((destination / "provision-journal.json").exists())
 
     def test_authority_anchor_rejects_links_writable_file_and_untrusted_parent(self):
