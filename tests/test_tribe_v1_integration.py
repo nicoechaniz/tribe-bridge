@@ -7,6 +7,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -917,6 +918,47 @@ class TribeV1IntegrationTests(unittest.TestCase):
         self.assertEqual(service.health()["protocol"], "tribe/v1")
         self.assertEqual(service.health()["build_commit"], "a" * 40)
         self.assertNotIn("path", service.health()["broker"])
+
+    def test_authenticated_malformed_messages_return_http_400(self):
+        service, endpoint = self.serve("malformed-message")
+        malformed = []
+        for field in ("sender", "message_id", "audience"):
+            missing = self.direct_envelope()
+            missing.pop(field)
+            malformed.append((f"missing-{field}", missing))
+        for field, value in (
+            ("sender", []),
+            ("message_id", []),
+            ("audience", "direct"),
+            ("recipients", {}),
+        ):
+            wrong_type = self.direct_envelope()
+            wrong_type[field] = value
+            malformed.append((f"wrong-type-{field}", wrong_type))
+
+        for label, body in malformed:
+            with self.subTest(label=label):
+                wrapper = wrap_request(
+                    body,
+                    keys=self.alice,
+                    method="POST",
+                    path="/v1/messages",
+                    now_ms=NOW,
+                )
+                request = urllib.request.Request(
+                    endpoint + "/v1/messages",
+                    data=protocol.canonical_json(wrapper),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with self.assertRaises(urllib.error.HTTPError) as raised:
+                    urllib.request.urlopen(request, timeout=5)
+                self.assertEqual(raised.exception.code, 400)
+                self.assertEqual(
+                    json.loads(raised.exception.read()),
+                    {"error": "invalid_request"},
+                )
+        self.assertEqual(service.broker.metrics()["messages"], 0)
 
     def test_http_direct_failure_falls_back_and_outbox_recovers(self):
         _service, hub = self.serve("hub")

@@ -119,9 +119,15 @@ not mutable local composer state.
   ceremony. It can revoke named keys only when the already signed base contains
   a different uncompromised active signing and encryption key for every agent,
   covering the full candidate lifetime. It never generates or imports a
-  replacement. Consequently, the normal D+1 produced above (whose predecessors
-  end at activation) cannot recover from compromise of its sole D+1 keys with
-  this command; holders must run another reviewed replacement-key ceremony.
+  replacement. When an encryption key is named, every active audience that
+  contains its owner as a member or observer is retired and an otherwise
+  identical successor at the next unused audience epoch is emitted for holder
+  review and threshold signing. Signing-key-only recovery leaves audiences
+  unchanged. The completed unsigned candidate is checked against the ordinary
+  directory validator before it is returned. Consequently, the normal D+1
+  produced above (whose predecessors end at activation) cannot recover from
+  compromise of its sole D+1 keys with this command; holders must run another
+  reviewed replacement-key ceremony.
   When redundant successors already exist, the executable revocation form is:
 
 ```bash
@@ -164,9 +170,15 @@ high-water directory hash as `previous_sha256`, even if the installed directory
 file is missing. The separately pinned provisioning authority is read once from
 a stable, single-link descriptor through owner/root-controlled, non-symlink
 parents; group/other-writable anchors and untrusted writable parents are
-rejected. Installation runs under a restartable journal, so a crash can only
-leave D or a resumable D+1 transition. The journal records the trusted time at
-which that exact signed package passed all validity checks; only that byte-exact
+rejected. The rendered client environment and explicit logical destination are
+validated before a fresh destination is created. The destination path is
+walked without following symlinks; its direct parent and destination
+descriptors remain open throughout apply, internal operations stay bound to
+that destination inode, and every durable phase rejects a pathname replacement.
+Group/other-writable destination parents are never accepted as an anti-rollback
+root. Installation runs under a restartable journal, so a crash can only leave
+D or a resumable D+1 transition. The journal records the trusted time at which
+that exact signed package passed all validity checks; only that byte-exact
 transaction may finish after package expiry. An expired package with no
 pre-existing exact journal cannot start. Exact replay also revalidates the
 installed client environment against the launcher's owner-only, single-link,

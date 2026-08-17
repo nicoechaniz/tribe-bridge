@@ -327,6 +327,141 @@ def _read_client_environment(path: Path) -> bytes:
             os.close(descriptor)
 
 
+def _trusted_directory(
+    info: os.stat_result, *, direct_parent: bool
+) -> bool:
+    sticky_root_ancestor = (
+        not direct_parent
+        and info.st_uid == 0
+        and bool(info.st_mode & stat.S_ISVTX)
+    )
+    return (
+        stat.S_ISDIR(info.st_mode)
+        and info.st_uid in {0, os.geteuid()}
+        and not (
+            stat.S_IMODE(info.st_mode) & 0o022
+            and not sticky_root_ancestor
+        )
+    )
+
+
+def _open_trusted_destination(
+    path: Path, *, allow_create: bool
+) -> tuple[int, int, os.stat_result]:
+    """Open a destination through retained, non-symlink trusted ancestors."""
+    parts = path.parts
+    if (
+        not path.is_absolute()
+        or len(parts) < 2
+        or not hasattr(os, "O_NOFOLLOW")
+        or not hasattr(os, "O_DIRECTORY")
+    ):
+        raise ProvisioningError("invalid provisioning destination path")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    current_fd: int | None = None
+    destination_fd: int | None = None
+    try:
+        current_fd = os.open(parts[0], flags)
+        root = os.fstat(current_fd)
+        if not _trusted_directory(root, direct_parent=len(parts) == 2):
+            raise ProvisioningError("untrusted provisioning destination parent")
+        for index, component in enumerate(parts[1:-1], start=1):
+            try:
+                next_fd = os.open(component, flags, dir_fd=current_fd)
+            except FileNotFoundError:
+                if not allow_create:
+                    raise ProvisioningError(
+                        "provisioning destination ancestry changed"
+                    ) from None
+                os.mkdir(component, 0o700, dir_fd=current_fd)
+                next_fd = os.open(component, flags, dir_fd=current_fd)
+            info = os.fstat(next_fd)
+            if not _trusted_directory(
+                info, direct_parent=index == len(parts) - 2
+            ):
+                os.close(next_fd)
+                raise ProvisioningError(
+                    "untrusted provisioning destination parent"
+                )
+            os.close(current_fd)
+            current_fd = next_fd
+        try:
+            destination_fd = os.open(parts[-1], flags, dir_fd=current_fd)
+        except FileNotFoundError:
+            if not allow_create:
+                raise ProvisioningError(
+                    "provisioning destination changed before opening"
+                ) from None
+            os.mkdir(parts[-1], 0o700, dir_fd=current_fd)
+            destination_fd = os.open(parts[-1], flags, dir_fd=current_fd)
+        destination_info = os.fstat(destination_fd)
+        if (
+            not stat.S_ISDIR(destination_info.st_mode)
+            or destination_info.st_uid != os.geteuid()
+            or stat.S_IMODE(destination_info.st_mode) & 0o077
+        ):
+            raise ProvisioningError(
+                "provisioning destination must be owner-only"
+            )
+        return current_fd, destination_fd, destination_info
+    except OSError as exception:
+        if destination_fd is not None:
+            os.close(destination_fd)
+        if current_fd is not None:
+            os.close(current_fd)
+        raise ProvisioningError(
+            "provisioning destination is unavailable or untrusted"
+        ) from exception
+    except Exception:
+        if destination_fd is not None:
+            os.close(destination_fd)
+        if current_fd is not None:
+            os.close(current_fd)
+        raise
+
+
+def _descriptor_directory_path(descriptor: int) -> Path:
+    path = Path(f"/proc/self/fd/{descriptor}")
+    try:
+        expected = os.fstat(descriptor)
+        current = path.stat()
+        if (current.st_dev, current.st_ino) != (
+            expected.st_dev,
+            expected.st_ino,
+        ):
+            raise OSError("descriptor path changed")
+    except OSError as exception:
+        raise ProvisioningError(
+            "stable destination descriptors are unavailable"
+        ) from exception
+    return path
+
+
+def _assert_destination_current(
+    parent_fd: int,
+    name: str,
+    expected: os.stat_result,
+) -> None:
+    try:
+        parent = os.fstat(parent_fd)
+        current = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError as exception:
+        raise ProvisioningError(
+            "provisioning destination changed during apply"
+        ) from exception
+    if (
+        not _trusted_directory(parent, direct_parent=True)
+        or not stat.S_ISDIR(current.st_mode)
+        or current.st_uid != os.geteuid()
+        or stat.S_IMODE(current.st_mode) & 0o077
+        or (current.st_dev, current.st_ino)
+        != (expected.st_dev, expected.st_ino)
+    ):
+        raise ProvisioningError(
+            "provisioning destination changed during apply"
+        )
+
+
 def _validate_package_inventory(package: Path) -> None:
     try:
         info = package.lstat()
@@ -778,9 +913,7 @@ def _parse_client_environment(payload: bytes) -> dict[str, str]:
             )
         value = _decode_environment_value(raw_value, line_number)
         if (
-            "\x00" in value
-            or "\n" in value
-            or "\r" in value
+            any(ord(character) < 32 or ord(character) == 127 for character in value)
             or "$(" in value
             or "${" in value
             or "`" in value
@@ -813,40 +946,95 @@ def apply_package(
     """Validate then restartably install one package without network access."""
     package_dir = Path(package_dir)
     authority_path = Path(authority_path)
-    destination = Path(destination)
+    logical_destination = Path(os.path.abspath(destination))
+    if any(
+        ord(character) < 32 or ord(character) == 127
+        for character in str(logical_destination)
+    ):
+        raise ProvisioningError("invalid provisioning destination path")
+    keys_path = Path(keys_path).resolve()
     # Avoid creating any target state for a package which is already invalid
     # at the trusted invocation time of a fresh installation.
     fresh_validation = None
-    if not destination.exists():
+    destination_existed = os.path.lexists(logical_destination)
+    if not destination_existed:
         fresh_validation = verify_package(
             package_dir, authority_path, now_ms=now_ms
         )
-    destination.mkdir(parents=True, exist_ok=True, mode=0o700)
-    destination_info = destination.lstat()
-    if (
-        stat.S_ISLNK(destination_info.st_mode)
-        or not stat.S_ISDIR(destination_info.st_mode)
-        or destination_info.st_uid != os.geteuid()
-        or stat.S_IMODE(destination_info.st_mode) & 0o077
-    ):
-        raise ProvisioningError("provisioning destination must be owner-only")
-    state_dir = destination / "state"
-    state_dir.mkdir(exist_ok=True, mode=0o700)
-    state_info = state_dir.lstat()
-    if (
-        stat.S_ISLNK(state_info.st_mode)
-        or not stat.S_ISDIR(state_info.st_mode)
-        or state_info.st_uid != os.geteuid()
-        or stat.S_IMODE(state_info.st_mode) & 0o077
-    ):
-        raise ProvisioningError("provisioning state directory must be owner-only")
-    journal_path = destination / "provision-journal.json"
-    high_water_path = destination / "provision-high-water.json"
-    lock_fd = os.open(
-        destination / ".provision.lock",
-        os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
-        0o600,
+        preflight_environment = _render_environment(
+            fresh_validation[0], logical_destination, keys_path
+        )
+        _environment_values(preflight_environment)
+    parent_fd, destination_fd, destination_info = _open_trusted_destination(
+        logical_destination,
+        allow_create=not destination_existed,
     )
+    try:
+        destination = _descriptor_directory_path(destination_fd)
+        journal_path = destination / "provision-journal.json"
+        high_water_path = destination / "provision-high-water.json"
+        preflight_validation = fresh_validation
+        if preflight_validation is None:
+            preflight_time = now_ms
+            if journal_path.exists():
+                preflight_journal = strict_json(
+                    _regular_file(journal_path, private=True)
+                )
+                _exact(
+                    preflight_journal,
+                    JOURNAL_FIELDS,
+                    "provisioning journal",
+                )
+                if preflight_journal["schema"] != JOURNAL_SCHEMA:
+                    raise ProvisioningError(
+                        "unsupported provisioning journal"
+                    )
+                preflight_time = _integer(
+                    preflight_journal["authorized_at_ms"],
+                    "journal authorization time",
+                    minimum=1,
+                )
+                unverified_manifest = strict_json(
+                    _regular_file(package_dir / "manifest.json")
+                )
+                if (
+                    _hash(protocol.canonical_json(unverified_manifest))
+                    != preflight_journal["package_sha256"]
+                ):
+                    raise ProvisioningError(
+                        "another provisioning transaction is unfinished"
+                    )
+            preflight_validation = verify_package(
+                package_dir,
+                authority_path,
+                now_ms=preflight_time,
+            )
+        preflight_environment = _render_environment(
+            preflight_validation[0], logical_destination, keys_path
+        )
+        _environment_values(preflight_environment)
+
+        state_dir = destination / "state"
+        state_dir.mkdir(exist_ok=True, mode=0o700)
+        state_info = state_dir.lstat()
+        if (
+            stat.S_ISLNK(state_info.st_mode)
+            or not stat.S_ISDIR(state_info.st_mode)
+            or state_info.st_uid != os.geteuid()
+            or stat.S_IMODE(state_info.st_mode) & 0o077
+        ):
+            raise ProvisioningError(
+                "provisioning state directory must be owner-only"
+            )
+        lock_fd = os.open(
+            destination / ".provision.lock",
+            os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+    except Exception:
+        os.close(destination_fd)
+        os.close(parent_fd)
+        raise
     try:
         lock_info = os.fstat(lock_fd)
         if (
@@ -856,6 +1044,11 @@ def apply_package(
         ):
             raise ProvisioningError("provisioning lock must be owner-only")
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        _assert_destination_current(
+            parent_fd,
+            logical_destination.name,
+            destination_info,
+        )
 
         journal = None
         validation_time = now_ms
@@ -905,7 +1098,6 @@ def apply_package(
             raise ProvisioningError(
                 "package local-agent set lacks an exact harness authorization"
             )
-        keys_path = Path(keys_path).resolve()
         bundle = KeyBundle.load(keys_path)
         directory = Directory(snapshot)
         if bundle.agent_id != manifest["agent_id"]:
@@ -1005,7 +1197,10 @@ def apply_package(
                 ):
                     raise ProvisioningError("installed directory is not the package predecessor")
 
-        environment = _render_environment(manifest, destination.resolve(), keys_path)
+        environment = _render_environment(
+            manifest, logical_destination, keys_path
+        )
+        expected_environment_values = _environment_values(environment)
         environment_entry_exists = (
             environment_path.exists() or environment_path.is_symlink()
         )
@@ -1016,7 +1211,7 @@ def apply_package(
             if (
                 previous_high_water == target_high_water
                 or previous_high_water is None
-            ) and installed_environment != _environment_values(environment):
+            ) and installed_environment != expected_environment_values:
                 raise ProvisioningError(
                     "installed client environment conflicts with the package"
                 )
@@ -1035,10 +1230,20 @@ def apply_package(
             _write_atomic(directory_path, directory_bytes, 0o644)
         if fault_hook:
             fault_hook("directory-installed")
+        _assert_destination_current(
+            parent_fd,
+            logical_destination.name,
+            destination_info,
+        )
         if not state_path.exists() or strict_json(state_path.read_bytes()) != target_state:
             _write_atomic(state_path, _serialize(target_state), 0o600)
         if fault_hook:
             fault_hook("state-installed")
+        _assert_destination_current(
+            parent_fd,
+            logical_destination.name,
+            destination_info,
+        )
         if (
             not environment_entry_exists
             or previous_high_water != target_high_water
@@ -1047,6 +1252,11 @@ def apply_package(
         _environment_values(_read_client_environment(environment_path))
         if fault_hook:
             fault_hook("environment-installed")
+        _assert_destination_current(
+            parent_fd,
+            logical_destination.name,
+            destination_info,
+        )
         if (
             previous_high_water != target_high_water
             or not high_water_path.exists()
@@ -1056,12 +1266,18 @@ def apply_package(
             )
         if fault_hook:
             fault_hook("high-water-installed")
+        _assert_destination_current(
+            parent_fd,
+            logical_destination.name,
+            destination_info,
+        )
         journal_path.unlink()
-        directory_fd = os.open(destination, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        os.fsync(destination_fd)
+        _assert_destination_current(
+            parent_fd,
+            logical_destination.name,
+            destination_info,
+        )
         receipt = {
             "schema": "tribe-provisioning-receipt/v1",
             "provisioning_id": manifest["provisioning_id"],
@@ -1081,6 +1297,8 @@ def apply_package(
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         os.close(lock_fd)
+        os.close(destination_fd)
+        os.close(parent_fd)
 
 
 def doctor(

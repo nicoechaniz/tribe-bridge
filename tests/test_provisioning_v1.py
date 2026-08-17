@@ -42,6 +42,21 @@ def load_launcher_module():
     return module
 
 
+def tree_snapshot(root):
+    result = {}
+    for path in sorted((root, *root.rglob("*"))):
+        info = path.lstat()
+        relative = str(path.relative_to(root)) if path != root else "."
+        if stat.S_ISLNK(info.st_mode):
+            payload = ("symlink", os.readlink(path))
+        elif stat.S_ISREG(info.st_mode):
+            payload = ("file", path.read_bytes())
+        else:
+            payload = ("directory", None)
+        result[relative] = (stat.S_IMODE(info.st_mode), payload)
+    return result
+
+
 def signed_successor(snapshot, now_ms, *, previous_sha256=None):
     value = build_next_epoch(snapshot, now_ms=now_ms, validity_days=30)
     if previous_sha256 is not None:
@@ -131,6 +146,8 @@ class ProvisioningTests(unittest.TestCase):
         env = destination / receipt["environment"]
         self.assertEqual(stat.S_IMODE(env.stat().st_mode), 0o600)
         self.assertNotIn("ssh", env.read_text().lower())
+        self.assertNotIn("/proc/self/fd", env.read_text())
+        self.assertIn(str(destination.resolve()), env.read_text())
         private_bundle = json.loads(
             self.material["bundles"]["alice"].read_text()
         )
@@ -390,6 +407,226 @@ class ProvisioningTests(unittest.TestCase):
                 now_ms=NOW + 2,
             )
         self.assertFalse((destination / "provision-journal.json").exists())
+
+    def test_rendered_environment_rejects_control_destination_without_effects(self):
+        package = self.tmp / "package"
+        self.build(package)
+        destination = self.tmp / "client\x1fcontrol"
+        before = tree_snapshot(self.tmp)
+
+        with self.assertRaisesRegex(
+            ProvisioningError, "invalid provisioning destination path"
+        ):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+            )
+
+        self.assertFalse(os.path.lexists(destination))
+        self.assertEqual(tree_snapshot(self.tmp), before)
+
+    def test_invalid_rendered_environment_preflight_creates_no_artifacts(self):
+        package = self.tmp / "package"
+        self.build(
+            package,
+            routes={
+                "worker@localhost": {
+                    "hub": "http://10.0.0.1/$(not-shell)"
+                }
+            },
+        )
+        missing = self.tmp / "missing-client"
+        before_missing = tree_snapshot(self.tmp)
+
+        with self.assertRaisesRegex(
+            ProvisioningError, "invalid client environment value"
+        ):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                missing,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+            )
+        self.assertFalse(missing.exists())
+        self.assertEqual(tree_snapshot(self.tmp), before_missing)
+
+        existing = self.tmp / "existing-client"
+        existing.mkdir(mode=0o700)
+        before_existing = tree_snapshot(existing)
+        with self.assertRaisesRegex(
+            ProvisioningError, "invalid client environment value"
+        ):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                existing,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+            )
+        self.assertEqual(tree_snapshot(existing), before_existing)
+
+    def test_writable_parent_cannot_swap_epoch_two_for_epoch_one(self):
+        package1 = self.tmp / "package-1"
+        self.build(package1)
+        safe_destination = self.tmp / "safe-client"
+        apply_package(
+            package1,
+            self.public_authority,
+            self.material["bundles"]["alice"],
+            safe_destination,
+            authorized_local_agent_ids=frozenset({"alice"}),
+            now_ms=NOW,
+        )
+        epoch1 = self.tmp / "epoch-1-copy"
+        shutil.copytree(safe_destination, epoch1)
+
+        successor = signed_successor(self.material["snapshot"], NOW + 1)
+        directory2 = self.tmp / "directory-2.json"
+        directory2.write_text(json.dumps(successor))
+        package2 = self.tmp / "package-2"
+        self.build(package2, directory_path=directory2, now_ms=NOW + 1)
+        apply_package(
+            package2,
+            self.public_authority,
+            self.material["bundles"]["alice"],
+            safe_destination,
+            authorized_local_agent_ids=frozenset({"alice"}),
+            now_ms=NOW + 1,
+        )
+
+        writable_parent = self.tmp / "writable-parent"
+        writable_parent.mkdir(mode=0o700)
+        current = writable_parent / "client"
+        shutil.copytree(safe_destination, current)
+        renamed_epoch2 = writable_parent / "renamed-epoch-2"
+        current.rename(renamed_epoch2)
+        shutil.copytree(epoch1, current)
+        writable_parent.chmod(0o777)
+        before = tree_snapshot(writable_parent)
+
+        with self.assertRaisesRegex(
+            ProvisioningError, "untrusted provisioning destination parent"
+        ):
+            apply_package(
+                package1,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                current,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW + 2,
+            )
+
+        self.assertEqual(tree_snapshot(writable_parent), before)
+        self.assertEqual(
+            json.loads(
+                (renamed_epoch2 / "provision-high-water.json").read_text()
+            )["directory_epoch"],
+            2,
+        )
+        self.assertEqual(
+            json.loads(
+                (current / "provision-high-water.json").read_text()
+            )["directory_epoch"],
+            1,
+        )
+
+    def test_destination_symlink_is_rejected_without_target_effects(self):
+        package = self.tmp / "package"
+        self.build(package)
+        target = self.tmp / "client-target"
+        apply_package(
+            package,
+            self.public_authority,
+            self.material["bundles"]["alice"],
+            target,
+            authorized_local_agent_ids=frozenset({"alice"}),
+            now_ms=NOW,
+        )
+        before = tree_snapshot(target)
+        destination = self.tmp / "client-link"
+        destination.symlink_to(target, target_is_directory=True)
+
+        with self.assertRaises(ProvisioningError):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+            )
+
+        self.assertTrue(destination.is_symlink())
+        self.assertEqual(tree_snapshot(target), before)
+
+        real_parent = self.tmp / "real-client-parent"
+        real_parent.mkdir(mode=0o700)
+        linked_parent = self.tmp / "linked-client-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        nested_destination = linked_parent / "nested-client"
+        parent_before = tree_snapshot(real_parent)
+        with self.assertRaises(ProvisioningError):
+            apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                nested_destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+            )
+        self.assertEqual(tree_snapshot(real_parent), parent_before)
+
+    def test_destination_swap_during_advance_never_mutates_replacement(self):
+        package1 = self.tmp / "package-1"
+        self.build(package1)
+        destination = self.tmp / "client"
+        apply_package(
+            package1,
+            self.public_authority,
+            self.material["bundles"]["alice"],
+            destination,
+            authorized_local_agent_ids=frozenset({"alice"}),
+            now_ms=NOW,
+        )
+        epoch1 = self.tmp / "epoch-1-copy"
+        shutil.copytree(destination, epoch1)
+        replacement_before = tree_snapshot(epoch1)
+
+        successor = signed_successor(self.material["snapshot"], NOW + 1)
+        directory2 = self.tmp / "directory-2.json"
+        directory2.write_text(json.dumps(successor))
+        package2 = self.tmp / "package-2"
+        self.build(package2, directory_path=directory2, now_ms=NOW + 1)
+        renamed = self.tmp / "client-renamed-during-apply"
+
+        def swap(phase):
+            if phase == "directory-installed":
+                destination.rename(renamed)
+                shutil.copytree(epoch1, destination)
+
+        with self.assertRaisesRegex(
+            ProvisioningError, "destination changed during apply"
+        ):
+            apply_package(
+                package2,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW + 1,
+                fault_hook=swap,
+            )
+
+        self.assertEqual(tree_snapshot(destination), replacement_before)
+        self.assertFalse((destination / "provision-journal.json").exists())
+        self.assertTrue((renamed / "provision-journal.json").exists())
 
     def test_next_epoch_must_descend_from_high_water_without_installed_directory(self):
         package1 = self.tmp / "package-1"

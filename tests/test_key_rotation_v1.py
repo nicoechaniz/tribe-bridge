@@ -695,6 +695,18 @@ class RotationTests(unittest.TestCase):
         self.assertEqual(recovered["previous_sha256"], Directory(signed).hash)
         alice = next(a for a in recovered["agents"] if a["id"] == "alice")
         self.assertEqual(alice["signing_keys"][0]["status"], "revoked")
+        alice_audiences = [
+            audience
+            for audience in recovered["audiences"]
+            if audience["type"] == "direct" and audience["id"] == "alice"
+        ]
+        self.assertEqual(
+            [
+                (audience["epoch"], audience["status"])
+                for audience in alice_audiences
+            ],
+            [(1, "retired"), (2, "active")],
+        )
         self.assertLessEqual(
             recovered["expires_at_ms"], signed["expires_at_ms"]
         )
@@ -721,6 +733,118 @@ class RotationTests(unittest.TestCase):
                 {"alice/sig/2", "alice/enc/2"},
                 now_ms=self.activation + 1,
             )
+
+    def test_encryption_recovery_advances_all_recipient_audiences_once(self):
+        candidate, _ = self.compose()
+        direct_alice = next(
+            audience
+            for audience in candidate["audiences"]
+            if audience["type"] == "direct" and audience["id"] == "alice"
+        )
+        direct_alice["observers"] = ["mirror"]
+        signed = sign_directory(candidate)
+        validate_directory(
+            signed, self.material["roots"], now_ms=self.activation + 1
+        )
+
+        recovered = build_forward_recovery(
+            signed,
+            self.material["roots"],
+            {"worker@localhost/enc/1", "mirror/enc/1"},
+            now_ms=self.activation + 1,
+        )
+        validate_unsigned_directory_candidate(
+            recovered, self.material["roots"], now_ms=self.activation + 1
+        )
+
+        expected_names = {
+            ("direct", "worker@localhost"),
+            ("direct", "alice"),
+            ("group", "public-agents"),
+        }
+        for identity in expected_names:
+            entries = [
+                audience
+                for audience in recovered["audiences"]
+                if (audience["type"], audience["id"]) == identity
+            ]
+            self.assertEqual(
+                [(entry["epoch"], entry["status"]) for entry in entries],
+                [(1, "retired"), (2, "active")],
+            )
+            predecessor, successor = entries
+            reviewed_policy = {
+                key: value
+                for key, value in predecessor.items()
+                if key not in {"epoch", "status"}
+            }
+            successor_policy = {
+                key: value
+                for key, value in successor.items()
+                if key not in {"epoch", "status"}
+            }
+            self.assertEqual(successor_policy, reviewed_policy)
+
+        # Both compromised owners are recipients of the group, but recovery
+        # emits only one successor for that logical audience.
+        self.assertEqual(
+            len(
+                [
+                    audience
+                    for audience in recovered["audiences"]
+                    if audience["type"] == "group"
+                    and audience["id"] == "public-agents"
+                ]
+            ),
+            2,
+        )
+
+    def test_signing_only_recovery_does_not_advance_audiences(self):
+        candidate, _ = self.compose()
+        signed = sign_directory(candidate)
+        recovered = build_forward_recovery(
+            signed,
+            self.material["roots"],
+            {"worker@localhost/sig/1"},
+            now_ms=self.activation + 1,
+        )
+        self.assertEqual(recovered["audiences"], signed["audiences"])
+
+    def test_recovery_at_not_before_keeps_nonempty_key_window(self):
+        candidate, _ = self.compose()
+        alice = next(
+            agent for agent in candidate["agents"] if agent["id"] == "alice"
+        )
+        encryption_2 = next(
+            key for key in alice["encryption_keys"] if key["epoch"] == 2
+        )
+        encryption_3 = copy.deepcopy(encryption_2)
+        encryption_3.update({"kid": "alice/enc/3", "epoch": 3})
+        alice["encryption_keys"].append(encryption_3)
+        signed = sign_directory(candidate)
+        validate_directory(
+            signed, self.material["roots"], now_ms=self.activation
+        )
+
+        recovered = build_forward_recovery(
+            signed,
+            self.material["roots"],
+            {"alice/enc/2"},
+            now_ms=self.activation,
+        )
+        recovered_alice = next(
+            agent for agent in recovered["agents"] if agent["id"] == "alice"
+        )
+        revoked = next(
+            key
+            for key in recovered_alice["encryption_keys"]
+            if key["kid"] == "alice/enc/2"
+        )
+        self.assertEqual(revoked["status"], "revoked")
+        self.assertGreater(revoked["not_after_ms"], revoked["not_before_ms"])
+        validate_unsigned_directory_candidate(
+            recovered, self.material["roots"], now_ms=self.activation
+        )
 
 
 if __name__ == "__main__":

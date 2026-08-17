@@ -10,6 +10,7 @@ import unittest
 import uuid
 from contextlib import closing
 from pathlib import Path
+from unittest import mock
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -147,6 +148,47 @@ class SQLiteBrokerTests(unittest.TestCase):
         with self.assertRaises(broker_module.ClockRollback):
             reopened.observe_trusted_time(cutover - 1)
         self.assertEqual(reopened.observe_trusted_time(cutover), cutover)
+
+    def test_enqueue_rejects_malformed_before_field_access_or_serialization(self):
+        malformed = []
+        for field in ("sender", "message_id", "audience"):
+            missing = copy.deepcopy(self.envelope)
+            missing.pop(field)
+            malformed.append((f"missing-{field}", missing))
+        for field, value in (
+            ("sender", []),
+            ("message_id", []),
+            ("audience", "direct"),
+            ("recipients", {}),
+        ):
+            wrong_type = copy.deepcopy(self.envelope)
+            wrong_type[field] = value
+            malformed.append((f"wrong-type-{field}", wrong_type))
+
+        for label, envelope in malformed:
+            with self.subTest(label=label), mock.patch.object(
+                protocol,
+                "canonical_json",
+                wraps=protocol.canonical_json,
+            ) as canonical_json:
+                with self.assertRaises(protocol.ProtocolError):
+                    self.broker.enqueue(
+                        envelope,
+                        self.context,
+                        received_at_ms=self.now,
+                    )
+                canonical_json.assert_not_called()
+        self.assertEqual(self.broker.metrics()["messages"], 0)
+
+        self.broker.observe_trusted_time(self.now + 1)
+        missing_message_id = copy.deepcopy(self.envelope)
+        missing_message_id.pop("message_id")
+        with self.assertRaises(broker_module.ClockRollback):
+            self.broker.enqueue(
+                missing_message_id,
+                self.context,
+                received_at_ms=self.now,
+            )
 
     def test_enqueue_is_idempotent_and_conflicting_bytes_fail(self):
         first = self.enqueue()

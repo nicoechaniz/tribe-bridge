@@ -517,14 +517,26 @@ def build_forward_recovery(
         raise RotationError("recovery base is not a valid signed directory") from exc
     if not compromised_kids:
         raise RotationError("forward recovery requires explicit key IDs")
-    known = {
-        key["kid"]
-        for agent in signed_rotation["agents"]
-        for purpose in ("signing_keys", "encryption_keys")
-        for key in agent[purpose]
-    }
-    if not compromised_kids <= known:
+    key_owners: dict[str, tuple[str, str]] = {}
+    for agent in signed_rotation["agents"]:
+        for purpose in ("signing_keys", "encryption_keys"):
+            for key in agent[purpose]:
+                kid = key["kid"]
+                if kid in key_owners:
+                    # The signed-base validator rejects this first.  Keep the
+                    # resolution closed here as a defense against later
+                    # refactors accidentally making ownership ambiguous.
+                    raise RotationError(
+                        "forward recovery key ownership is ambiguous"
+                    )
+                key_owners[kid] = (agent["id"], purpose)
+    if not compromised_kids <= set(key_owners):
         raise RotationError("forward recovery names an unknown key")
+    compromised_encryption_owners = {
+        key_owners[kid][0]
+        for kid in compromised_kids
+        if key_owners[kid][1] == "encryption_keys"
+    }
     candidate = copy.deepcopy(signed_rotation)
     candidate["directory_epoch"] += 1
     candidate["previous_sha256"] = directory_sha256(signed_rotation)
@@ -544,9 +556,50 @@ def build_forward_recovery(
             for key in agent[purpose]:
                 if key["kid"] in compromised_kids:
                     key["status"] = "revoked"
-                    key["not_after_ms"] = min(
-                        key["not_after_ms"] or now_ms, now_ms
-                    )
+                    # A key revoked exactly at/before not-before never had a
+                    # non-empty authority window to close.  Status revocation
+                    # is sufficient and preserving its original upper bound
+                    # avoids emitting the forbidden not_before == not_after.
+                    if now_ms > key["not_before_ms"]:
+                        key["not_after_ms"] = min(
+                            key["not_after_ms"] or now_ms, now_ms
+                        )
+
+    affected_audiences: dict[tuple[str, str], dict[str, Any]] = {}
+    if compromised_encryption_owners:
+        for audience in candidate["audiences"]:
+            if audience["status"] != "active":
+                continue
+            recipients = set(audience["members"]) | set(
+                audience.get("observers", [])
+            )
+            if not recipients & compromised_encryption_owners:
+                continue
+            identity = (audience["type"], audience["id"])
+            current = affected_audiences.get(identity)
+            if current is None or audience["epoch"] > current["epoch"]:
+                affected_audiences[identity] = copy.deepcopy(audience)
+
+        # Retire every active predecessor for an affected logical audience so
+        # none can continue authorizing wraps to the compromised recipient.
+        # Multiple compromised owners in one group still produce one reviewed
+        # successor copied from the highest active epoch.
+        for audience in candidate["audiences"]:
+            identity = (audience["type"], audience["id"])
+            if (
+                identity in affected_audiences
+                and audience["status"] == "active"
+            ):
+                audience["status"] = "retired"
+        for identity in sorted(affected_audiences):
+            successor = affected_audiences[identity]
+            successor["epoch"] = 1 + max(
+                audience["epoch"]
+                for audience in candidate["audiences"]
+                if (audience["type"], audience["id"]) == identity
+            )
+            successor["status"] = "active"
+            candidate["audiences"].append(successor)
     for agent in candidate["agents"]:
         for purpose in ("signing_keys", "encryption_keys"):
             if not any(
@@ -562,7 +615,12 @@ def build_forward_recovery(
                     "forward recovery requires a pre-existing uncompromised "
                     f"successor covering {agent['id']} {purpose}"
                 )
-    protocol.canonical_json(candidate)
+    try:
+        validate_unsigned_directory_candidate(candidate, roots, now_ms=now_ms)
+    except DirectoryError as exc:
+        raise RotationError(
+            "forward recovery candidate is semantically invalid"
+        ) from exc
     return candidate
 
 
