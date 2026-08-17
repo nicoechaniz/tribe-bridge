@@ -45,11 +45,27 @@ JOURNAL_SCHEMA = "tribe-provisioning-journal/v1"
 HIGH_WATER_SCHEMA = "tribe-provisioning-high-water/v1"
 MAX_MANIFEST_LIFETIME_MS = 7 * 86_400_000
 MAX_ARTIFACT_BYTES = 1024 * 1024
+MAX_CLIENT_ENV_BYTES = 256 * 1024
 PACKAGE_FILES = {
     "directory.json",
     "governance-roots.json",
     "manifest.json",
 }
+CLIENT_ENVIRONMENT_KEYS = frozenset(
+    {
+        "TRIBE_CLIENT_ID",
+        "TRIBE_V1_BUILD_COMMIT",
+        "TRIBE_V1_CLIENT_DB",
+        "TRIBE_V1_CLIENT_INBOX_DB",
+        "TRIBE_V1_DIRECTORY",
+        "TRIBE_V1_DIRECTORY_STATE",
+        "TRIBE_V1_GOVERNANCE_ROOTS",
+        "TRIBE_V1_INBOX_ENDPOINTS",
+        "TRIBE_V1_KEYS",
+        "TRIBE_V1_LOCAL_AGENT_IDS",
+        "TRIBE_V1_ROUTES",
+    }
+)
 
 MANIFEST_FIELDS = {
     "schema",
@@ -149,6 +165,166 @@ def _regular_file(path: Path, *, private: bool = False) -> bytes:
     if info.st_size <= 0 or info.st_size > MAX_ARTIFACT_BYTES:
         raise ProvisioningError(f"artifact has invalid size: {path.name}")
     return path.read_bytes()
+
+
+def _read_stable_descriptor(
+    descriptor: int,
+    path: Path,
+    before: os.stat_result,
+    *,
+    max_bytes: int,
+    label: str,
+) -> bytes:
+    chunks: list[bytes] = []
+    size = 0
+    while chunk := os.read(descriptor, 16 * 1024):
+        size += len(chunk)
+        if size > max_bytes:
+            raise ProvisioningError(f"{label} is too large: {path.name}")
+        chunks.append(chunk)
+    after = os.fstat(descriptor)
+    if (
+        before.st_dev,
+        before.st_ino,
+        before.st_size,
+        before.st_mtime_ns,
+        before.st_ctime_ns,
+    ) != (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+    ):
+        raise ProvisioningError(f"{label} changed while reading: {path.name}")
+    payload = b"".join(chunks)
+    if not payload:
+        raise ProvisioningError(f"{label} is empty: {path.name}")
+    return payload
+
+
+def _read_trust_anchor(path: Path) -> bytes:
+    """Read an owner-controlled anchor through a trusted descriptor chain."""
+    absolute = Path(os.path.abspath(path))
+    parts = absolute.parts
+    if (
+        len(parts) < 2
+        or not hasattr(os, "O_NOFOLLOW")
+        or not hasattr(os, "O_DIRECTORY")
+    ):
+        raise ProvisioningError("invalid provisioning authority path")
+    nofollow = os.O_NOFOLLOW
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | nofollow
+    directory_fd: int | None = None
+    try:
+        directory_fd = os.open(parts[0], directory_flags)
+        root = os.fstat(directory_fd)
+        root_is_direct_parent = len(parts) == 2
+        root_is_sticky_ancestor = (
+            not root_is_direct_parent
+            and root.st_uid == 0
+            and bool(root.st_mode & stat.S_ISVTX)
+        )
+        if (
+            not stat.S_ISDIR(root.st_mode)
+            or root.st_uid not in {0, os.geteuid()}
+            or (
+                stat.S_IMODE(root.st_mode) & 0o022
+                and not root_is_sticky_ancestor
+            )
+        ):
+            raise ProvisioningError("untrusted provisioning authority parent")
+        for index, component in enumerate(parts[1:-1], start=1):
+            next_fd = os.open(component, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+            info = os.fstat(directory_fd)
+            direct_parent = index == len(parts) - 2
+            sticky_root_ancestor = (
+                not direct_parent
+                and info.st_uid == 0
+                and bool(info.st_mode & stat.S_ISVTX)
+            )
+            if (
+                not stat.S_ISDIR(info.st_mode)
+                or info.st_uid not in {0, os.geteuid()}
+                or (stat.S_IMODE(info.st_mode) & 0o022 and not sticky_root_ancestor)
+            ):
+                raise ProvisioningError("untrusted provisioning authority parent")
+        descriptor = os.open(
+            parts[-1],
+            os.O_RDONLY | nofollow | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=directory_fd,
+        )
+        try:
+            opened = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or opened.st_uid not in {0, os.geteuid()}
+                or stat.S_IMODE(opened.st_mode) & 0o022
+                or opened.st_nlink != 1
+                or opened.st_size > 16 * 1024
+            ):
+                raise ProvisioningError(
+                    "provisioning authority must be one owner-controlled regular file"
+                )
+            return _read_stable_descriptor(
+                descriptor,
+                absolute,
+                opened,
+                max_bytes=16 * 1024,
+                label="provisioning authority",
+            )
+        finally:
+            os.close(descriptor)
+    except OSError as exception:
+        raise ProvisioningError(
+            "provisioning authority is unavailable or untrusted"
+        ) from exception
+    finally:
+        if directory_fd is not None:
+            os.close(directory_fd)
+
+
+def _read_client_environment(path: Path) -> bytes:
+    descriptor: int | None = None
+    try:
+        before = path.lstat()
+        if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+            raise ProvisioningError(
+                "client environment must be one owner-only regular file"
+            )
+        descriptor = os.open(
+            path,
+            os.O_RDONLY
+            | getattr(os, "O_NOFOLLOW", 0)
+            | getattr(os, "O_NONBLOCK", 0),
+        )
+        opened = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino) != (opened.st_dev, opened.st_ino):
+            raise ProvisioningError("client environment changed while opening")
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_uid != os.geteuid()
+            or stat.S_IMODE(opened.st_mode) & 0o077
+            or opened.st_nlink != 1
+            or opened.st_size > MAX_CLIENT_ENV_BYTES
+        ):
+            raise ProvisioningError(
+                "client environment must be one owner-only regular file"
+            )
+        return _read_stable_descriptor(
+            descriptor,
+            path,
+            opened,
+            max_bytes=MAX_CLIENT_ENV_BYTES,
+            label="client environment",
+        )
+    except OSError as exception:
+        raise ProvisioningError("client environment is unavailable") from exception
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
 
 
 def _validate_package_inventory(package: Path) -> None:
@@ -421,7 +597,7 @@ def verify_package(
     if manifest["schema"] != MANIFEST_SCHEMA:
         raise ProvisioningError("unsupported provisioning manifest")
     authority = strict_json(
-        _regular_file(Path(authority_path)), max_bytes=16 * 1024
+        _read_trust_anchor(Path(authority_path)), max_bytes=16 * 1024
     )
     _exact(authority, AUTHORITY_FIELDS, "provisioning authority")
     if authority["schema"] != AUTHORITY_SCHEMA or authority["kid"] != manifest["signer_kid"]:
@@ -547,6 +723,81 @@ def _render_environment(
         f"{key}={json.dumps(value, ensure_ascii=True)}\n"
         for key, value in sorted(values.items())
     ).encode("utf-8")
+
+
+def _decode_environment_value(raw: str, line_number: int) -> str:
+    if raw.startswith('"') or raw.endswith('"'):
+        if not (raw.startswith('"') and raw.endswith('"')):
+            raise ProvisioningError(
+                f"invalid quoted client environment value on line {line_number}"
+            )
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError as exception:
+            raise ProvisioningError(
+                f"invalid quoted client environment value on line {line_number}"
+            ) from exception
+        if not isinstance(value, str):
+            raise ProvisioningError(
+                f"invalid quoted client environment value on line {line_number}"
+            )
+        return value
+    if raw.startswith("'") or raw.endswith("'"):
+        if not (raw.startswith("'") and raw.endswith("'")) or "'" in raw[1:-1]:
+            raise ProvisioningError(
+                f"invalid quoted client environment value on line {line_number}"
+            )
+        return raw[1:-1]
+    return raw
+
+
+def _parse_client_environment(payload: bytes) -> dict[str, str]:
+    try:
+        text = payload.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exception:
+        raise ProvisioningError("client environment is not UTF-8") from exception
+    values: dict[str, str] = {}
+    for line_number, source_line in enumerate(text.splitlines(), start=1):
+        line = source_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        if "=" not in line:
+            raise ProvisioningError(
+                f"client environment is data, not shell, on line {line_number}"
+            )
+        key, raw_value = line.split("=", 1)
+        if key not in CLIENT_ENVIRONMENT_KEYS:
+            raise ProvisioningError(
+                f"client environment key is not allowed on line {line_number}"
+            )
+        if key in values:
+            raise ProvisioningError(
+                f"duplicate client environment key on line {line_number}"
+            )
+        value = _decode_environment_value(raw_value, line_number)
+        if (
+            "\x00" in value
+            or "\n" in value
+            or "\r" in value
+            or "$(" in value
+            or "${" in value
+            or "`" in value
+        ):
+            raise ProvisioningError(
+                f"invalid client environment value on line {line_number}"
+            )
+        values[key] = value
+    if set(values) != CLIENT_ENVIRONMENT_KEYS:
+        raise ProvisioningError(
+            "client environment does not contain the exact identity keys"
+        )
+    return values
+
+
+def _environment_values(payload: bytes) -> dict[str, str]:
+    return _parse_client_environment(payload)
 
 
 def apply_package(
@@ -709,6 +960,13 @@ def apply_package(
                     )
             elif previous_epoch + 1 != manifest["directory_epoch"]:
                 raise ProvisioningError("provisioning high-water discontinuity")
+            elif (
+                snapshot["previous_sha256"]
+                != previous_high_water["directory_sha256"]
+            ):
+                raise ProvisioningError(
+                    "provisioning package does not descend from the high-water"
+                )
         elif not journal_path.exists() and any(
             path.exists()
             for path in (directory_path, roots_path, state_path, environment_path)
@@ -747,6 +1005,24 @@ def apply_package(
                 ):
                     raise ProvisioningError("installed directory is not the package predecessor")
 
+        environment = _render_environment(manifest, destination.resolve(), keys_path)
+        environment_entry_exists = (
+            environment_path.exists() or environment_path.is_symlink()
+        )
+        if environment_entry_exists:
+            installed_environment = _environment_values(
+                _read_client_environment(environment_path)
+            )
+            if (
+                previous_high_water == target_high_water
+                or previous_high_water is None
+            ) and installed_environment != _environment_values(environment):
+                raise ProvisioningError(
+                    "installed client environment conflicts with the package"
+                )
+        elif previous_high_water is not None:
+            raise ProvisioningError("installed client environment is missing")
+
         # Only persist a journal after every read-only compatibility check has
         # passed.  Invalid rollback/root/split-view attempts therefore cannot
         # leave a denial-of-service journal behind.
@@ -763,9 +1039,12 @@ def apply_package(
             _write_atomic(state_path, _serialize(target_state), 0o600)
         if fault_hook:
             fault_hook("state-installed")
-        environment = _render_environment(manifest, destination.resolve(), keys_path)
-        if not environment_path.exists() or environment_path.read_bytes() != environment:
+        if (
+            not environment_entry_exists
+            or previous_high_water != target_high_water
+        ):
             _write_atomic(environment_path, environment, 0o600)
+        _environment_values(_read_client_environment(environment_path))
         if fault_hook:
             fault_hook("environment-installed")
         if (

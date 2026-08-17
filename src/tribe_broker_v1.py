@@ -57,6 +57,10 @@ class RequestReplay(BrokerError):
     code = "request_replay"
 
 
+class ClockRollback(BrokerError):
+    code = "clock_rollback"
+
+
 class StorageError(BrokerError):
     code = "storage_error"
 
@@ -460,6 +464,48 @@ class SQLiteBroker:
             "path": str(self.path),
         }
 
+    @staticmethod
+    def _observe_trusted_time(
+        connection: sqlite3.Connection, observed_now_ms: int
+    ) -> int:
+        if (
+            not isinstance(observed_now_ms, int)
+            or isinstance(observed_now_ms, bool)
+            or observed_now_ms < 0
+            or observed_now_ms > 9_007_199_254_740_991
+        ):
+            raise ValueError("invalid observed time")
+        row = connection.execute(
+            "SELECT value FROM broker_meta WHERE key='trusted_time_high_water_ms'"
+        ).fetchone()
+        if row is not None:
+            try:
+                high_water = int(row["value"])
+            except (TypeError, ValueError) as exc:
+                raise StorageCorruption(
+                    "invalid trusted-time high-water"
+                ) from exc
+            if str(high_water) != row["value"] or high_water < 0:
+                raise StorageCorruption("invalid trusted-time high-water")
+            if observed_now_ms < high_water:
+                raise ClockRollback(
+                    "clock moved behind durable trusted-time high-water"
+                )
+        connection.execute(
+            """
+            INSERT INTO broker_meta(key, value)
+            VALUES('trusted_time_high_water_ms', ?)
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value
+            """,
+            (str(observed_now_ms),),
+        )
+        return observed_now_ms
+
+    def observe_trusted_time(self, observed_now_ms: int) -> int:
+        """Durably accept monotonic wall time or fail closed on rollback."""
+        with self._transaction() as connection:
+            return self._observe_trusted_time(connection, observed_now_ms)
+
     def record_authenticated_request(
         self,
         agent_id: str,
@@ -474,6 +520,7 @@ class SQLiteBroker:
         if parsed.version != 7:
             raise ValueError("request_id must be UUIDv7")
         with self._transaction() as connection:
+            now_ms = self._observe_trusted_time(connection, now_ms)
             connection.execute(
                 "DELETE FROM request_replays WHERE expires_at_ms <= ?",
                 (now_ms,),
@@ -498,15 +545,16 @@ class SQLiteBroker:
         received_at_ms: int | None = None,
     ) -> dict[str, Any]:
         now = self.clock_ms() if received_at_ms is None else received_at_ms
-        validation_context = dict(context)
-        validation_context["now_ms"] = now
-        protocol.validate_broker_admission(envelope, validation_context)
         encoded = protocol.canonical_json(envelope)
         digest = sha256(encoded).hexdigest()
         sender_id = envelope["sender"]["id"]
         message_id = envelope["message_id"]
 
         with self._transaction() as connection:
+            now = self._observe_trusted_time(connection, now)
+            validation_context = dict(context)
+            validation_context["now_ms"] = now
+            protocol.validate_broker_admission(envelope, validation_context)
             existing = connection.execute(
                 """
                 SELECT id, envelope_sha256

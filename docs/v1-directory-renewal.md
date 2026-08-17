@@ -45,11 +45,16 @@ The ceremony is intentionally split so no composer holds participant keys:
 4. D+1 gives new keys a common future `not_before_ms` and ends both old public
    key validity windows exactly at activation. Old encryption *private* keys
    remain local for the drain, but cannot authorize post-cut traffic: broker
-   admission and HTTP authentication check both issuance and the trusted
-   receive time. Endpoint receive still checks the historical issuance window
-   so ciphertext admitted before the cut remains decryptable. D+1 also retires
-   every active audience predecessor and adds an identical active successor at
-   the next audience epoch.
+   admission and HTTP authentication check both issuance and a receive-time
+   high-water durably stored in the broker database. Every authenticated HTTP
+   mutation records that high-water before directory selection or
+   authentication; clock rollback fails closed, including after restart. The
+   read-only health endpoint grants no authority. Endpoint receive still checks the
+   historical issuance window so ciphertext admitted before the cut remains
+   decryptable. Because the closed audience schema has no activation time, key
+   rotation preserves the audience registry byte-for-byte. Membership or
+   audience-epoch changes require a separate ceremony; this keeps preloaded D+1
+   from changing D's active audiences before key activation.
 5. Independent governance holders append their signatures one at a time with
    `sign_directory_v1.py`. The configured threshold is verified by normal
    directory loading. The aggregator never receives all private keys.
@@ -110,16 +115,21 @@ not mutable local composer state.
   authoritative.
 - After D+1 is signed or any anti-rollback state accepts it, never reinstall D,
   restore an older state file, reuse KIDs/epochs or silently change roots.
-- Prebuild an unsigned forward-recovery D+2 that revokes the named D+1 keys and
-  proves every agent still has an active signing and encryption key. It also
-  requires offline threshold signing:
+- `forward-recovery` is a narrow revocation composer, not a replacement-key
+  ceremony. It can revoke named keys only when the already signed base contains
+  a different uncompromised active signing and encryption key for every agent,
+  covering the full candidate lifetime. It never generates or imports a
+  replacement. Consequently, the normal D+1 produced above (whose predecessors
+  end at activation) cannot recover from compromise of its sole D+1 keys with
+  this command; holders must run another reviewed replacement-key ceremony.
+  When redundant successors already exist, the executable revocation form is:
 
 ```bash
 python3 scripts/rotate_keys_v1.py forward-recovery \
   --directory FIXTURE/directory-next-signed.json \
   --roots FIXTURE/governance-roots.json \
   --state FIXTURE/recovery-directory-state.json \
-  --revoke-kid agent/sig/2 --revoke-kid agent/enc/2 \
+  --revoke-kid agent/sig/1 --revoke-kid agent/enc/1 \
   --output FIXTURE/directory-forward-recovery-unsigned.json
 ```
 
@@ -149,12 +159,20 @@ owner-only key bundle, direct/group membership, exact harness-approved locality
 set, roots continuity and anti-rollback state. A separate owner-only durable
 high-water binds the target agent, directory epoch/hash, roots hash and exact
 package hash: exact replay is idempotent, while an older or same-epoch
-conflicting package is rejected. Installation runs under a restartable journal,
-so a crash can only leave D or a resumable D+1 transition. The journal records
-the trusted time at which that exact signed package passed all validity checks;
-only that byte-exact transaction may finish after package expiry. An expired
-package with no pre-existing exact journal cannot start. Invalid rollback, root
-or split-view attempts mutate no installed artifact and leave no journal.
+conflicting package is rejected. Every D to D+1 transition must name the
+high-water directory hash as `previous_sha256`, even if the installed directory
+file is missing. The separately pinned provisioning authority is read once from
+a stable, single-link descriptor through owner/root-controlled, non-symlink
+parents; group/other-writable anchors and untrusted writable parents are
+rejected. Installation runs under a restartable journal, so a crash can only
+leave D or a resumable D+1 transition. The journal records the trusted time at
+which that exact signed package passed all validity checks; only that byte-exact
+transaction may finish after package expiry. An expired package with no
+pre-existing exact journal cannot start. Exact replay also revalidates the
+installed client environment against the launcher's owner-only, single-link,
+closed-key contract before accepting idempotence. Invalid rollback, root,
+split-view, anchor or environment attempts mutate no installed artifact and
+leave no journal.
 
 ```bash
 # Synthetic authority; never treat this test key as live governance.
