@@ -132,6 +132,22 @@ class SQLiteBrokerTests(unittest.TestCase):
         self.assertTrue(broker_module.sqlite_wal_is_safe((3, 50, 7)))
         self.assertFalse(broker_module.sqlite_wal_is_safe((3, 51, 2)))
 
+    def test_trusted_time_high_water_survives_restart_and_closes_enqueue(self):
+        cutover = self.now + 1_000
+        self.assertEqual(self.broker.observe_trusted_time(cutover), cutover)
+
+        with self.assertRaisesRegex(
+            broker_module.ClockRollback, "durable trusted-time high-water"
+        ):
+            self.enqueue()
+
+        reopened = broker_module.SQLiteBroker(
+            self.root / "broker.sqlite", clock_ms=self.clock
+        )
+        with self.assertRaises(broker_module.ClockRollback):
+            reopened.observe_trusted_time(cutover - 1)
+        self.assertEqual(reopened.observe_trusted_time(cutover), cutover)
+
     def test_enqueue_is_idempotent_and_conflicting_bytes_fail(self):
         first = self.enqueue()
         second = self.enqueue()

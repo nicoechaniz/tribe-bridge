@@ -28,6 +28,7 @@ from tribe_directory_v1 import (
     validate_unsigned_directory_candidate,
 )
 import tribe_protocol_v1 as protocol
+from tribe_broker_v1 import ClockRollback, SQLiteBroker
 from tribe_rotation_v1 import (
     RotationError,
     activate_staged_bundle,
@@ -38,6 +39,7 @@ from tribe_rotation_v1 import (
     verify_announcement,
 )
 from tribe_transport_v1 import auth_preimage, validate_request, wrap_request
+from tribe_service_v1 import TribeV1Service
 from v1_fixtures import NOW, b64url, make_material, signing_key
 
 
@@ -169,6 +171,10 @@ class RotationTests(unittest.TestCase):
         self.assertEqual(candidate["directory_epoch"], 2)
         self.assertEqual(receipt["agent_ids"], sorted(self.material["agents"]))
         self.assertFalse(receipt["contains_private_material"])
+        self.assertEqual(
+            candidate["audiences"], self.material["snapshot"]["audiences"]
+        )
+        self.assertEqual(receipt["audience_successors"], 0)
         self.assertEqual(
             len([a for a in candidate["audiences"] if a["status"] == "active"]),
             len(self.material["snapshot"]["audiences"]),
@@ -351,6 +357,36 @@ class RotationTests(unittest.TestCase):
                 )
                 self.assertEqual(previous["not_after_ms"], exact_expiry)
 
+    def test_preloaded_rotation_preserves_current_audience_epoch(self):
+        candidate, receipt = self.compose()
+        directory2 = Directory(sign_directory(candidate))
+        original_audiences = copy.deepcopy(
+            self.material["snapshot"]["audiences"]
+        )
+
+        self.assertEqual(candidate["audiences"], original_audiences)
+        self.assertEqual(receipt["audience_successors"], 0)
+        pre_cut = encrypt_envelope(
+            message_payload(
+                sender="alice", to="worker@localhost", text="pre-cut"
+            ),
+            directory=directory2,
+            keys=KeyBundle.load(self.material["bundles"]["alice"]),
+            audience_type="direct",
+            audience_id="worker@localhost",
+            local_agent_ids=frozenset(),
+            now_ms=self.activation - 1,
+            ttl_ms=HOUR,
+        )
+        expected = next(
+            audience
+            for audience in original_audiences
+            if audience["type"] == "direct"
+            and audience["id"] == "worker@localhost"
+        )
+        self.assertEqual(pre_cut["audience"]["epoch"], expected["epoch"])
+        self.assertEqual(expected["status"], "active")
+
     def test_activation_retains_old_ciphertext_and_is_idempotent(self):
         old_sender = KeyBundle.load(self.material["bundles"]["alice"])
         queued = encrypt_envelope(
@@ -498,6 +534,79 @@ class RotationTests(unittest.TestCase):
                 now_ms=NOW,
             )
 
+    def test_service_durable_time_rejects_old_key_after_clock_rollback(self):
+        candidate, _ = self.compose()
+        directory2 = Directory(sign_directory(candidate))
+        current = self.material["bundles"]["alice"]
+        activate_staged_bundle(
+            current,
+            self.staged["alice"],
+            directory2,
+            now_ms=self.activation + 1,
+        )
+        next_sender = KeyBundle.load(current)
+        old_sender = KeyBundle.load(
+            next(
+                path
+                for path in self.tmp.glob("base/alice.keys.json.pre-*")
+            )
+        )
+        body = {"recipient_id": "alice", "limit": 1, "lease_ms": 1_000}
+        post_cut = wrap_request(
+            body,
+            keys=next_sender,
+            method="POST",
+            path="/v1/claims",
+            now_ms=self.activation + 1,
+        )
+        backdated = wrap_request(
+            body,
+            keys=old_sender,
+            method="POST",
+            path="/v1/claims",
+            now_ms=self.activation - 1,
+        )
+
+        # This is the exact stateless regression: D+1 accepts the old key when
+        # the caller supplies a rolled-back receive time.
+        validate_request(
+            backdated,
+            directory=directory2,
+            method="POST",
+            path="/v1/claims",
+            now_ms=self.activation - 1,
+        )
+
+        class Clock:
+            value = self.activation + 1
+
+            def __call__(clock_self):
+                return clock_self.value
+
+        clock = Clock()
+        service = TribeV1Service(
+            SQLiteBroker(self.tmp / "trusted-time.sqlite"),
+            directory2,
+            build_commit="a" * 40,
+            local_agent_ids=frozenset(self.material["agents"]),
+            clock_ms=clock,
+        )
+        self.assertEqual(service.post("/v1/claims", post_cut)[0], 200)
+        clock.value = self.activation - 1
+        with self.assertRaises(ClockRollback):
+            service.post("/v1/claims", backdated)
+
+        # The high-water is durable across service/broker restart.
+        restarted = TribeV1Service(
+            SQLiteBroker(self.tmp / "trusted-time.sqlite"),
+            directory2,
+            build_commit="a" * 40,
+            local_agent_ids=frozenset(self.material["agents"]),
+            clock_ms=clock,
+        )
+        with self.assertRaises(ClockRollback):
+            restarted.post("/v1/claims", backdated)
+
     def test_activation_rejects_dropped_old_encryption_key(self):
         candidate, _ = self.compose()
         signed = sign_directory(candidate)
@@ -603,7 +712,9 @@ class RotationTests(unittest.TestCase):
                         for key in agent[purpose]
                     )
                 )
-        with self.assertRaises(RotationError):
+        with self.assertRaisesRegex(
+            RotationError, "requires a pre-existing uncompromised successor"
+        ):
             build_forward_recovery(
                 signed,
                 self.material["roots"],

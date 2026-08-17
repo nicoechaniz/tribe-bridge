@@ -11,7 +11,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import tribe_protocol_v1 as protocol
 from tribe_broker_v1 import (
@@ -55,9 +55,10 @@ class TribeV1Service:
         self.clock_ms = clock_ms or (lambda: int(time.time() * 1000))
         self.directory_loader = directory_loader
 
-    def _current_directory(self) -> Directory:
+    def _current_directory(self, now_ms: int | None = None) -> Directory:
         if self.directory_loader is not None:
-            self.directory = self.directory_loader(self.clock_ms())
+            current_ms = self.clock_ms() if now_ms is None else now_ms
+            self.directory = self.directory_loader(current_ms)
         return self.directory
 
     def health(self) -> dict[str, Any]:
@@ -78,8 +79,11 @@ class TribeV1Service:
         }
 
     def post(self, path: str, wrapper: Any) -> tuple[int, dict[str, Any]]:
-        now = self.clock_ms()
-        directory = self._current_directory()
+        # Persist the receive-time high-water before selecting directory
+        # authority or authenticating the caller.  A wall-clock rollback must
+        # therefore fail closed rather than re-enable pre-cut keys.
+        now = self.broker.observe_trusted_time(self.clock_ms())
+        directory = self._current_directory(now)
         auth, body = validate_request(
             wrapper,
             directory=directory,
@@ -155,6 +159,7 @@ class TribeV1Service:
 
 class BoundedThreadingHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
+    service: TribeV1Service
 
     def __init__(self, address, handler, *, max_workers: int):
         super().__init__(address, handler)
@@ -192,7 +197,7 @@ class TribeV1Handler(BaseHTTPRequestHandler):
 
     @property
     def service(self) -> TribeV1Service:
-        return self.server.service
+        return cast(BoundedThreadingHTTPServer, self.server).service
 
     def log_message(self, format, *args):
         if os.environ.get("TRIBE_V1_VERBOSE") == "1":
@@ -276,15 +281,16 @@ def build_service_from_environment() -> tuple[TribeV1Service, str, int, int]:
         raise RuntimeError(
             "missing required environment: " + ", ".join(missing)
         )
+    values = {key: cast(str, value) for key, value in required.items()}
     now = int(time.time() * 1000)
     directory = Directory.load(
-        required["TRIBE_V1_DIRECTORY"],
-        required["TRIBE_V1_GOVERNANCE_ROOTS"],
-        required["TRIBE_V1_DIRECTORY_STATE"],
+        values["TRIBE_V1_DIRECTORY"],
+        values["TRIBE_V1_GOVERNANCE_ROOTS"],
+        values["TRIBE_V1_DIRECTORY_STATE"],
         now_ms=now,
     )
     broker = SQLiteBroker(
-        required["TRIBE_V1_DB"],
+        values["TRIBE_V1_DB"],
         journal_mode=os.environ.get("TRIBE_V1_JOURNAL_MODE", "auto"),
     )
     bind = os.environ.get("TRIBE_V1_BIND", "127.0.0.1")
@@ -302,14 +308,14 @@ def build_service_from_environment() -> tuple[TribeV1Service, str, int, int]:
         TribeV1Service(
             broker,
             directory,
-            build_commit=required["TRIBE_V1_BUILD_COMMIT"],
+            build_commit=values["TRIBE_V1_BUILD_COMMIT"],
             local_agent_ids=parse_local_agent_ids(
-                required["TRIBE_V1_LOCAL_AGENT_IDS"]
+                values["TRIBE_V1_LOCAL_AGENT_IDS"]
             ),
             directory_loader=lambda current_ms: Directory.load(
-                required["TRIBE_V1_DIRECTORY"],
-                required["TRIBE_V1_GOVERNANCE_ROOTS"],
-                required["TRIBE_V1_DIRECTORY_STATE"],
+                values["TRIBE_V1_DIRECTORY"],
+                values["TRIBE_V1_GOVERNANCE_ROOTS"],
+                values["TRIBE_V1_DIRECTORY_STATE"],
                 now_ms=current_ms,
             ),
         ),

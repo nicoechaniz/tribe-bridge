@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import os
 import shutil
@@ -16,6 +17,7 @@ sys.path.insert(0, str(ROOT / "tests"))
 from tribe_directory_admin_v1 import build_next_epoch
 from tribe_directory_v1 import b64url_decode, directory_preimage
 from tribe_provisioning_v1 import (
+    CLIENT_ENVIRONMENT_KEYS,
     ProvisioningError,
     _manifest_preimage,
     apply_package,
@@ -30,8 +32,20 @@ from v1_fixtures import NOW, b64url, make_material, signing_key
 BUILD = "187c61d881e6de830a029027144193645f2c7f62"
 
 
-def signed_successor(snapshot, now_ms):
+def load_launcher_module():
+    path = ROOT / "scripts" / "tribe_launcher.py"
+    spec = importlib.util.spec_from_file_location("tribe_launcher", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("unable to load Tribe launcher")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def signed_successor(snapshot, now_ms, *, previous_sha256=None):
     value = build_next_epoch(snapshot, now_ms=now_ms, validity_days=30)
+    if previous_sha256 is not None:
+        value["previous_sha256"] = previous_sha256
     value["governance"]["signatures"] = [
         {
             "kid": "governance/root/1",
@@ -376,6 +390,184 @@ class ProvisioningTests(unittest.TestCase):
                 now_ms=NOW + 2,
             )
         self.assertFalse((destination / "provision-journal.json").exists())
+
+    def test_next_epoch_must_descend_from_high_water_without_installed_directory(self):
+        package1 = self.tmp / "package-1"
+        self.build(package1)
+        destination = self.tmp / "client"
+        apply_package(
+            package1,
+            self.public_authority,
+            self.material["bundles"]["alice"],
+            destination,
+            authorized_local_agent_ids=frozenset({"alice"}),
+            now_ms=NOW,
+        )
+        high_water_path = destination / "provision-high-water.json"
+        high_water_before = high_water_path.read_bytes()
+        (destination / "directory.json").unlink()
+
+        fork = signed_successor(
+            self.material["snapshot"],
+            NOW + 1,
+            previous_sha256="f" * 64,
+        )
+        fork_path = self.tmp / "directory-fork.json"
+        fork_path.write_text(json.dumps(fork))
+        package2 = self.tmp / "package-2-fork"
+        self.build(package2, directory_path=fork_path, now_ms=NOW + 1)
+
+        with self.assertRaisesRegex(
+            ProvisioningError, "does not descend from the high-water"
+        ):
+            apply_package(
+                package2,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW + 1,
+            )
+        self.assertEqual(high_water_path.read_bytes(), high_water_before)
+        self.assertFalse((destination / "directory.json").exists())
+        self.assertFalse((destination / "provision-journal.json").exists())
+
+    def test_authority_anchor_rejects_links_writable_file_and_untrusted_parent(self):
+        package = self.tmp / "package"
+        self.build(package)
+        authority_bytes = self.public_authority.read_bytes()
+
+        symlink = self.tmp / "authority-symlink.json"
+        symlink.symlink_to(self.public_authority)
+
+        hardlink_target = self.tmp / "authority-hardlink-target.json"
+        hardlink_target.write_bytes(authority_bytes)
+        hardlink_target.chmod(0o644)
+        hardlink = self.tmp / "authority-hardlink.json"
+        os.link(hardlink_target, hardlink)
+
+        writable = self.tmp / "authority-writable.json"
+        writable.write_bytes(authority_bytes)
+        writable.chmod(0o666)
+
+        fifo = self.tmp / "authority-fifo.json"
+        os.mkfifo(fifo, mode=0o600)
+
+        shared = self.tmp / "shared"
+        shared.mkdir(mode=0o700)
+        shared_authority = shared / "authority.json"
+        shared_authority.write_bytes(authority_bytes)
+        shared_authority.chmod(0o644)
+        shared.chmod(0o777)
+
+        real_parent = self.tmp / "real-parent"
+        real_parent.mkdir(mode=0o700)
+        parent_authority = real_parent / "authority.json"
+        parent_authority.write_bytes(authority_bytes)
+        parent_authority.chmod(0o644)
+        parent_symlink = self.tmp / "parent-symlink"
+        parent_symlink.symlink_to(real_parent, target_is_directory=True)
+
+        attacks = (
+            symlink,
+            hardlink,
+            writable,
+            fifo,
+            shared_authority,
+            parent_symlink / "authority.json",
+        )
+        for index, authority in enumerate(attacks):
+            with self.subTest(authority=authority):
+                destination = self.tmp / f"authority-attack-{index}"
+                with self.assertRaises(ProvisioningError):
+                    apply_package(
+                        package,
+                        authority,
+                        self.material["bundles"]["alice"],
+                        destination,
+                        authorized_local_agent_ids=frozenset({"alice"}),
+                        now_ms=NOW,
+                    )
+                self.assertFalse(destination.exists())
+
+    def test_exact_reapply_revalidates_launcher_environment_contract(self):
+        package = self.tmp / "package"
+        self.build(package)
+        launcher = load_launcher_module()
+        self.assertEqual(CLIENT_ENVIRONMENT_KEYS, launcher.IDENTITY_KEYS)
+
+        def installed(index):
+            destination = self.tmp / f"environment-attack-{index}"
+            receipt = apply_package(
+                package,
+                self.public_authority,
+                self.material["bundles"]["alice"],
+                destination,
+                authorized_local_agent_ids=frozenset({"alice"}),
+                now_ms=NOW,
+            )
+            self.assertEqual(
+                set(
+                    launcher.load_client_environment(
+                        destination / receipt["environment"]
+                    )
+                ),
+                CLIENT_ENVIRONMENT_KEYS,
+            )
+            return destination, destination / receipt["environment"]
+
+        attacks = []
+
+        destination, environment = installed(0)
+        environment.chmod(0o644)
+        attacks.append((destination, environment))
+
+        destination, environment = installed(1)
+        original = environment.read_bytes()
+        environment.unlink()
+        target = destination / "linked-environment-target"
+        target.write_bytes(original)
+        target.chmod(0o600)
+        environment.symlink_to(target)
+        attacks.append((destination, environment))
+
+        destination, environment = installed(2)
+        os.link(environment, destination / "environment-hardlink")
+        attacks.append((destination, environment))
+
+        destination, environment = installed(3)
+        environment.write_bytes(
+            environment.read_bytes() + b'TRIBE_V1_REPO="/tmp/attacker"\n'
+        )
+        attacks.append((destination, environment))
+
+        destination, environment = installed(4)
+        environment.write_text(
+            environment.read_text().replace(
+                'TRIBE_CLIENT_ID="alice"',
+                'TRIBE_CLIENT_ID="mallory"',
+            )
+        )
+        attacks.append((destination, environment))
+
+        for destination, environment in attacks:
+            with self.subTest(environment=environment):
+                before = environment.lstat()
+                with self.assertRaises(ProvisioningError):
+                    apply_package(
+                        package,
+                        self.public_authority,
+                        self.material["bundles"]["alice"],
+                        destination,
+                        authorized_local_agent_ids=frozenset({"alice"}),
+                        now_ms=NOW,
+                    )
+                after = environment.lstat()
+                self.assertEqual(
+                    (before.st_dev, before.st_ino, before.st_mode),
+                    (after.st_dev, after.st_ino, after.st_mode),
+                )
+                self.assertFalse((destination / "provision-journal.json").exists())
 
     def test_tamper_wrong_keys_insecure_keys_and_root_change_fail_closed(self):
         package = self.tmp / "package"

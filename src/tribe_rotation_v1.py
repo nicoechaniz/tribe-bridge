@@ -448,24 +448,11 @@ def compose_rotation(
             }
         )
 
-    newest_active: dict[tuple[str, str], dict[str, Any]] = {}
-    for audience in candidate["audiences"]:
-        if audience["status"] != "active":
-            continue
-        key = (audience["type"], audience["id"])
-        current = newest_active.get(key)
-        if current is None or audience["epoch"] > current["epoch"]:
-            newest_active[key] = copy.deepcopy(audience)
-        audience["status"] = "retired"
-    for key in sorted(newest_active):
-        successor = newest_active[key]
-        successor["epoch"] = max(
-            audience["epoch"]
-            for audience in candidate["audiences"]
-            if (audience["type"], audience["id"]) == key
-        ) + 1
-        successor["status"] = "active"
-        candidate["audiences"].append(successor)
+    # Audience records have no temporal validity fields in the closed v1
+    # schema.  Rotating them in a directory that may be preloaded would make
+    # the successor epoch authoritative immediately, before key activation.
+    # Key rotation therefore preserves the audience registry byte-for-byte;
+    # an audience membership/epoch transition is a separate ceremony.
 
     # Validate every closed structural and semantic rule before emitting the
     # candidate.  This explicitly unsigned validation never grants runtime
@@ -504,7 +491,7 @@ def compose_rotation(
         "ceremony_sha256": ceremony_sha256,
         "agent_ids": active_agents,
         "announcement_sha256": announcement_hashes,
-        "audience_successors": len(newest_active),
+        "audience_successors": 0,
         "contains_private_material": False,
     }
     return candidate, receipt
@@ -518,7 +505,12 @@ def build_forward_recovery(
     now_ms: int,
     validity_days: int = 30,
 ) -> dict[str, Any]:
-    """Build unsigned D+1 that revokes selected keys without rollback."""
+    """Revoke keys only when signed D already has uncompromised coverage.
+
+    This helper does not create replacement keys.  It is executable only for
+    a base which already contains another active signing and encryption key
+    covering each affected agent through the candidate expiry.
+    """
     try:
         validate_directory(signed_rotation, roots, now_ms=now_ms)
     except DirectoryError as exc:
@@ -567,7 +559,8 @@ def build_forward_recovery(
                 for key in agent[purpose]
             ):
                 raise RotationError(
-                    f"forward recovery lacks {agent['id']} {purpose} coverage"
+                    "forward recovery requires a pre-existing uncompromised "
+                    f"successor covering {agent['id']} {purpose}"
                 )
     protocol.canonical_json(candidate)
     return candidate
