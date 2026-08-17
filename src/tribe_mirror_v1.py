@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
+import sqlite3
 import urllib.error
 import urllib.request
 from bisect import bisect_right
+from collections.abc import Callable
+from contextlib import closing
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import tribe_protocol_v1 as protocol
@@ -28,6 +33,213 @@ TELEGRAM_MESSAGE_LIMIT = 4096
 # provenance header and the "part i/n" suffix while keeping every rendered
 # part comfortably below TELEGRAM_MESSAGE_LIMIT.
 _ESCAPED_BODY_BUDGET = 3500
+# Human-readable messages may still span a few Telegram posts.  Beyond this
+# bound the mirror emits one content-addressed notice instead of turning a
+# machine artifact into a wall of opaque fragments.
+MAX_MIRROR_PARTS = 8
+_OPAQUE_ARTIFACT_MIN_CHARS = 7000
+
+
+class MirrorDeliveryError(RuntimeError):
+    """A retryable Telegram part failed without exposing its contents."""
+
+    def __init__(self, part_index: int, total_parts: int):
+        super().__init__("Telegram delivery unavailable")
+        self.part_index = part_index
+        self.total_parts = total_parts
+
+    def failure_record(self, *, endpoint: str, message_id: str) -> dict[str, Any]:
+        return {
+            "endpoint": endpoint,
+            "message_id": message_id,
+            "failed_part_index": self.part_index,
+            "total_parts": self.total_parts,
+            "error": "telegram_delivery_retryable",
+        }
+
+
+class MirrorProgressStore:
+    """Durable cursor for one deterministic Telegram rendering.
+
+    The cursor is advanced only after Telegram confirms a part.  Retrying an
+    interrupted claim therefore resumes at the first unconfirmed part instead
+    of replaying the already confirmed prefix.
+    """
+
+    def __init__(self, path: Path | str):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.execute("PRAGMA journal_mode=DELETE")
+            connection.execute("PRAGMA synchronous=FULL")
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS mirror_part_progress(
+                    sender_id TEXT NOT NULL,
+                    message_id TEXT NOT NULL,
+                    envelope_sha256 TEXT NOT NULL,
+                    rendered_sha256 TEXT NOT NULL,
+                    total_parts INTEGER NOT NULL CHECK(total_parts > 0),
+                    next_part_index INTEGER NOT NULL CHECK(
+                        next_part_index >= 0 AND next_part_index <= total_parts
+                    ),
+                    updated_at_ms INTEGER NOT NULL,
+                    PRIMARY KEY(sender_id, message_id)
+                ) STRICT
+                """
+            )
+            connection.commit()
+        self.path.chmod(0o600)
+
+    @staticmethod
+    def _rendered_sha256(parts: list[str]) -> str:
+        if not parts or any(not isinstance(part, str) for part in parts):
+            raise MirrorPolicyError("invalid rendered Telegram parts")
+        encoded = json.dumps(
+            parts, ensure_ascii=False, separators=(",", ":")
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    def resume(
+        self,
+        sender_id: str,
+        message_id: str,
+        envelope_sha256: str,
+        parts: list[str],
+        *,
+        now_ms: int,
+    ) -> int:
+        rendered_sha256 = self._rendered_sha256(parts)
+        with closing(
+            sqlite3.connect(self.path, isolation_level=None)
+        ) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA synchronous=FULL")
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                row = connection.execute(
+                    """
+                    SELECT envelope_sha256, rendered_sha256,
+                           total_parts, next_part_index
+                    FROM mirror_part_progress
+                    WHERE sender_id=? AND message_id=?
+                    """,
+                    (sender_id, message_id),
+                ).fetchone()
+                if row is None:
+                    connection.execute(
+                        """
+                        INSERT INTO mirror_part_progress(
+                            sender_id, message_id, envelope_sha256,
+                            rendered_sha256, total_parts, next_part_index,
+                            updated_at_ms
+                        ) VALUES(?, ?, ?, ?, ?, 0, ?)
+                        """,
+                        (
+                            sender_id,
+                            message_id,
+                            envelope_sha256,
+                            rendered_sha256,
+                            len(parts),
+                            now_ms,
+                        ),
+                    )
+                    connection.execute("COMMIT")
+                    return 0
+                if (
+                    row["envelope_sha256"] != envelope_sha256
+                    or row["rendered_sha256"] != rendered_sha256
+                    or row["total_parts"] != len(parts)
+                ):
+                    raise MirrorPolicyError(
+                        "retry rendering differs from persisted progress"
+                    )
+                next_part_index = int(row["next_part_index"])
+                connection.execute("COMMIT")
+                return next_part_index
+            except Exception:
+                connection.execute("ROLLBACK")
+                raise
+
+    def advance(
+        self,
+        sender_id: str,
+        message_id: str,
+        envelope_sha256: str,
+        parts: list[str],
+        *,
+        delivered_index: int,
+        now_ms: int,
+    ) -> None:
+        rendered_sha256 = self._rendered_sha256(parts)
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.execute("PRAGMA synchronous=FULL")
+            updated = connection.execute(
+                """
+                UPDATE mirror_part_progress
+                SET next_part_index=?, updated_at_ms=?
+                WHERE sender_id=? AND message_id=?
+                  AND envelope_sha256=? AND rendered_sha256=?
+                  AND total_parts=? AND next_part_index=?
+                """,
+                (
+                    delivered_index + 1,
+                    now_ms,
+                    sender_id,
+                    message_id,
+                    envelope_sha256,
+                    rendered_sha256,
+                    len(parts),
+                    delivered_index,
+                ),
+            )
+            if updated.rowcount != 1:
+                raise RuntimeError("mirror part cursor changed concurrently")
+            connection.commit()
+
+    def clear(self, sender_id: str, message_id: str) -> None:
+        with closing(sqlite3.connect(self.path)) as connection:
+            connection.execute(
+                """
+                DELETE FROM mirror_part_progress
+                WHERE sender_id=? AND message_id=?
+                """,
+                (sender_id, message_id),
+            )
+            connection.commit()
+
+
+def deliver_rendered_parts(
+    progress: MirrorProgressStore,
+    *,
+    sender_id: str,
+    message_id: str,
+    envelope_sha256: str,
+    parts: list[str],
+    send: Callable[[str], Any],
+    now_ms: int,
+) -> None:
+    """Resume one deterministic rendering at its first unconfirmed part."""
+    next_part_index = progress.resume(
+        sender_id,
+        message_id,
+        envelope_sha256,
+        parts,
+        now_ms=now_ms,
+    )
+    for index in range(next_part_index, len(parts)):
+        try:
+            send(parts[index])
+        except RuntimeError as exc:
+            raise MirrorDeliveryError(index + 1, len(parts)) from exc
+        progress.advance(
+            sender_id,
+            message_id,
+            envelope_sha256,
+            parts,
+            delivered_index=index,
+            now_ms=now_ms,
+        )
 
 
 @dataclass(frozen=True)
@@ -136,6 +348,34 @@ class TelegramPolicy:
             start = end
         return chunks
 
+    @staticmethod
+    def _looks_like_opaque_artifact(text: str) -> bool:
+        if len(text) < _OPAQUE_ARTIFACT_MIN_CHARS:
+            return False
+        compact = "".join(text.split())
+        if not compact:
+            return False
+        base64_chars = frozenset(
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+            "0123456789+/=_-"
+        )
+        opaque_fraction = sum(char in base64_chars for char in compact) / len(
+            compact
+        )
+        return opaque_fraction >= 0.98
+
+    @classmethod
+    def _suppressed_artifact_notice(
+        cls, text: str, envelope: dict[str, Any]
+    ) -> str:
+        provenance = cls._provenance(envelope)
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        return (
+            f"<b>{html.escape(provenance)}</b>\n"
+            "Large or opaque payload omitted from Telegram; use an approved "
+            f"artifact channel · characters {len(text)} · sha256 {digest}"
+        )
+
     def render(
         self, payload: dict[str, Any], envelope: dict[str, Any]
     ) -> str:
@@ -153,7 +393,12 @@ class TelegramPolicy:
         """Render as one or more Telegram-safe messages (issue #44)."""
         self._validate_render(payload, envelope)
         provenance = self._provenance(envelope)
-        chunks = self._chunk_text(payload["text"])
+        text = payload["text"]
+        chunks = self._chunk_text(text)
+        if len(chunks) > MAX_MIRROR_PARTS or self._looks_like_opaque_artifact(
+            text
+        ):
+            return [self._suppressed_artifact_notice(text, envelope)]
         if len(chunks) == 1:
             header = f"<b>{html.escape(provenance)}</b>\n"
             return [f"{header}{html.escape(chunks[0])}"]

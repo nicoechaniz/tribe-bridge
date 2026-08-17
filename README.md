@@ -66,6 +66,12 @@ and the consolidated
 `scripts/flush_outbox_v1.py` retries envelopes durably staged while every route
 was offline or while a sender crashed around an ambiguous response.
 
+The Telegram mirror persists a deterministic per-part cursor before releasing
+a retryable claim, so a durably confirmed prefix is not sent again. Payloads
+that would exceed eight Telegram posts, and large opaque encodings, are
+replaced by one provenance-and-hash notice; corpora and machine artifacts
+belong in an approved artifact channel rather than the human-message mirror.
+
 ## Requirements
 
 - Python 3.10 through 3.13 (the complete CI matrix)

@@ -62,6 +62,25 @@ incident evidence outside the protocol runtime.
 - The endpoint outbox is stored in the same engine with independent leases,
   retry/backoff, receipts, and dead letters.
 
+## Telegram mirror retry boundary
+
+The mirror's local SQLite database also stores the digest and next unconfirmed
+part for each deterministic Telegram rendering. A retry resumes at that
+cursor; the durably recorded prefix is not replayed from part one. Because
+Telegram has no request idempotency key, an interrupted response for the
+current part remains ambiguous; this cursor bounds that ambiguity to one part
+rather than the whole prefix. A changed rendering for the same envelope fails
+closed instead of mixing two renderings. Retryable output names only the
+endpoint, message ID, failed part index, total parts and a stable error code;
+it never includes plaintext or credentials.
+
+The mirror is a human-observation path, not an artifact transport. More than
+eight rendered parts, or a large opaque encoding, becomes one notice containing
+provenance, character count and plaintext digest. The corpus or bundle itself
+must move through a separately approved artifact channel. This bounds an
+incident like a 35-part delivery to one Telegram post rather than allowing
+every broker retry to replay a long prefix.
+
 ## SQLite journal gate
 
 SQLite versions 3.7.0 through 3.51.2 contain the WAL-reset race documented by
