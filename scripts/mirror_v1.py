@@ -79,7 +79,10 @@ def main():
         str(Path.home() / ".tribe-bridge/v1/mirror.sqlite"),
     )
     store = InboxStore(store_path)
-    progress = MirrorProgressStore(store_path)
+    # Keep external-effect cursors in a sidecar database. A stalled cursor
+    # writer must not prevent the inbox-effect row from being released and
+    # ACKed retryable after an ambiguous Telegram response.
+    progress = MirrorProgressStore(f"{store_path}.parts")
     failures = []
     mirrored = 0
     for endpoint in endpoints:
