@@ -98,10 +98,12 @@ class TribeV1Service:
             expires_at_ms=auth["expires_at_ms"],
         )
         if path == "/v1/messages":
-            if (
-                not isinstance(body, dict)
-                or body.get("sender", {}).get("id") != auth["agent_id"]
-            ):
+            if not isinstance(body, dict):
+                raise protocol.ProtocolError("malformed_envelope")
+            sender = body.get("sender")
+            if not isinstance(sender, dict) or not isinstance(sender.get("id"), str):
+                raise protocol.ProtocolError("malformed_envelope")
+            if sender["id"] != auth["agent_id"]:
                 raise protocol.ProtocolError("unauthorized_sender")
             if auth["agent_id"].endswith("@localhost"):
                 protocol.validate_structure(body)

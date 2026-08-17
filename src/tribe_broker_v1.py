@@ -545,16 +545,16 @@ class SQLiteBroker:
         received_at_ms: int | None = None,
     ) -> dict[str, Any]:
         now = self.clock_ms() if received_at_ms is None else received_at_ms
-        encoded = protocol.canonical_json(envelope)
-        digest = sha256(encoded).hexdigest()
-        sender_id = envelope["sender"]["id"]
-        message_id = envelope["message_id"]
 
         with self._transaction() as connection:
             now = self._observe_trusted_time(connection, now)
             validation_context = dict(context)
             validation_context["now_ms"] = now
             protocol.validate_broker_admission(envelope, validation_context)
+            encoded = protocol.canonical_json(envelope)
+            digest = sha256(encoded).hexdigest()
+            sender_id = envelope["sender"]["id"]
+            message_id = envelope["message_id"]
             existing = connection.execute(
                 """
                 SELECT id, envelope_sha256
