@@ -19,6 +19,7 @@ from tribe_broker_v1 import (
     MessageConflict,
     RequestReplay,
     SQLiteBroker,
+    validate_ack,
 )
 from tribe_directory_v1 import Directory, DirectoryError, strict_json
 from tribe_locality_v1 import (
@@ -78,6 +79,66 @@ class TribeV1Service:
             "broker": broker_runtime,
         }
 
+    def _message_context(
+        self,
+        body: Any,
+        auth: dict[str, Any],
+        directory: Directory,
+        now: int,
+    ) -> dict[str, Any]:
+        if not isinstance(body, dict):
+            raise protocol.ProtocolError("malformed_envelope")
+        sender = body.get("sender")
+        if not isinstance(sender, dict) or not isinstance(sender.get("id"), str):
+            raise protocol.ProtocolError("malformed_envelope")
+        if sender["id"] != auth["agent_id"]:
+            raise protocol.ProtocolError("unauthorized_sender")
+        context = directory.context(sender_id=auth["agent_id"], now_ms=now)
+        protocol.validate_broker_admission(body, context)
+        if auth["agent_id"].endswith("@localhost"):
+            enforce_localhost_boundary(
+                auth["agent_id"],
+                (item["id"] for item in body["recipients"]),
+                self.local_agent_ids,
+            )
+        return context
+
+    @staticmethod
+    def _validate_claim(body: Any, auth: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(body, dict) or set(body) != {
+            "recipient_id",
+            "limit",
+            "lease_ms",
+        }:
+            raise protocol.ProtocolError("malformed_request")
+        if not isinstance(body["recipient_id"], str):
+            raise protocol.ProtocolError("malformed_request")
+        if body["recipient_id"] != auth["agent_id"]:
+            raise protocol.ProtocolError("unauthorized_receiver")
+        if (
+            not isinstance(body["limit"], int)
+            or isinstance(body["limit"], bool)
+            or not 1 <= body["limit"] <= 3
+            or not isinstance(body["lease_ms"], int)
+            or isinstance(body["lease_ms"], bool)
+            or not 1_000 <= body["lease_ms"] <= 15 * 60 * 1000
+        ):
+            raise protocol.ProtocolError("malformed_request")
+        return body
+
+    @staticmethod
+    def _ack_context(
+        body: Any,
+        auth: dict[str, Any],
+        directory: Directory,
+        now: int,
+    ) -> dict[str, Any]:
+        context = directory.context(receiver_id=auth["agent_id"], now_ms=now)
+        validate_ack(body, context, now_ms=now)
+        if body["receiver_id"] != auth["agent_id"]:
+            raise protocol.ProtocolError("unauthorized_receiver")
+        return context
+
     def post(self, path: str, wrapper: Any) -> tuple[int, dict[str, Any]]:
         # Persist the receive-time high-water before selecting directory
         # authority or authenticating the caller.  A wall-clock rollback must
@@ -91,6 +152,19 @@ class TribeV1Service:
             path=path,
             now_ms=now,
         )
+        operation_context: dict[str, Any] | None = None
+        if path == "/v1/messages":
+            operation_context = self._message_context(body, auth, directory, now)
+        elif path == "/v1/claims":
+            body = self._validate_claim(body, auth)
+        elif path == "/v1/acks":
+            operation_context = self._ack_context(body, auth, directory, now)
+        else:
+            raise protocol.ProtocolError("unknown_endpoint")
+
+        # Only fully authenticated, route-valid requests consume replay state.
+        # Recording still precedes every broker effect, so a valid retry cannot
+        # repeat an operation whose first response was lost.
         self.broker.record_authenticated_request(
             auth["agent_id"],
             auth["request_id"],
@@ -98,43 +172,13 @@ class TribeV1Service:
             expires_at_ms=auth["expires_at_ms"],
         )
         if path == "/v1/messages":
-            if not isinstance(body, dict):
-                raise protocol.ProtocolError("malformed_envelope")
-            sender = body.get("sender")
-            if not isinstance(sender, dict) or not isinstance(sender.get("id"), str):
-                raise protocol.ProtocolError("malformed_envelope")
-            if sender["id"] != auth["agent_id"]:
-                raise protocol.ProtocolError("unauthorized_sender")
-            if auth["agent_id"].endswith("@localhost"):
-                protocol.validate_structure(body)
-                enforce_localhost_boundary(
-                    auth["agent_id"],
-                    (item["id"] for item in body["recipients"]),
-                    self.local_agent_ids,
-                )
-            context = directory.context(
-                sender_id=auth["agent_id"], now_ms=now
-            )
+            assert operation_context is not None
             receipt = self.broker.enqueue(
-                body, context, received_at_ms=now
+                body, operation_context, received_at_ms=now
             )
             return (200 if receipt["duplicate"] else 201), receipt
 
         if path == "/v1/claims":
-            if not isinstance(body, dict) or set(body) != {
-                "recipient_id",
-                "limit",
-                "lease_ms",
-            }:
-                raise protocol.ProtocolError("malformed_request")
-            if body["recipient_id"] != auth["agent_id"]:
-                raise protocol.ProtocolError("unauthorized_receiver")
-            if (
-                not isinstance(body["limit"], int)
-                or isinstance(body["limit"], bool)
-                or not 1 <= body["limit"] <= 3
-            ):
-                raise protocol.ProtocolError("malformed_request")
             claims = self.broker.claim(
                 body["recipient_id"],
                 limit=body["limit"],
@@ -144,19 +188,12 @@ class TribeV1Service:
             return 200, {"claims": claims}
 
         if path == "/v1/acks":
-            if (
-                not isinstance(body, dict)
-                or body.get("receiver_id") != auth["agent_id"]
-            ):
-                raise protocol.ProtocolError("unauthorized_receiver")
-            context = directory.context(
-                receiver_id=auth["agent_id"], now_ms=now
-            )
+            assert operation_context is not None
             result = self.broker.acknowledge(
-                body, context, now_ms=now
+                body, operation_context, now_ms=now
             )
             return 200, result
-        raise protocol.ProtocolError("unknown_endpoint")
+        raise AssertionError("validated route was not dispatched")
 
 
 class BoundedThreadingHTTPServer(ThreadingHTTPServer):

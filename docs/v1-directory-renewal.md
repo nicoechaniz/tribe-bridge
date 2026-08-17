@@ -172,11 +172,13 @@ a stable, single-link descriptor through owner/root-controlled, non-symlink
 parents; group/other-writable anchors and untrusted writable parents are
 rejected. The rendered client environment and explicit logical destination are
 validated before a fresh destination is created. The destination path is
-walked without following symlinks; its direct parent and destination
-descriptors remain open throughout apply, internal operations stay bound to
-that destination inode, and every durable phase rejects a pathname replacement.
-Group/other-writable destination parents are never accepted as an anti-rollback
-root. Installation runs under a restartable journal, so a crash can only leave
+walked without following symlinks; descriptors for the complete ancestry and
+destination remain open throughout apply, internal operations stay bound to
+that destination inode, and every durable phase revalidates every
+name-to-inode link. Group/other-writable destination parents are never accepted
+as an anti-rollback root. Apply is Linux-specific and fails before creating a
+fresh destination when stable `/proc/self/fd` paths are unavailable.
+Installation runs under a restartable journal, so a crash can only leave
 D or a resumable D+1 transition. The journal records the trusted time at which
 that exact signed package passed all validity checks; only that byte-exact
 transaction may finish after package expiry. An expired package with no
