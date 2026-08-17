@@ -7,7 +7,6 @@ import sys
 import time
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -15,7 +14,14 @@ import tribe_protocol_v1 as protocol
 from tribe_client_v1 import InboxStore, make_ack, post_signed
 from tribe_crypto_v1 import KeyBundle, decrypt_envelope
 from tribe_directory_v1 import Directory
-from tribe_mirror_v1 import MirrorPolicyError, TelegramClient, TelegramPolicy
+from tribe_mirror_v1 import (
+    MirrorDeliveryError,
+    MirrorPolicyError,
+    MirrorProgressStore,
+    TelegramClient,
+    TelegramPolicy,
+    deliver_rendered_parts,
+)
 
 
 def required(name):
@@ -68,12 +74,12 @@ def main():
         int(required("TRIBE_TELEGRAM_CHAT_ID")),
         policy,
     )
-    store = InboxStore(
-        os.environ.get(
-            "TRIBE_V1_MIRROR_DB",
-            str(Path.home() / ".tribe-bridge/v1/mirror.sqlite"),
-        )
+    store_path = os.environ.get(
+        "TRIBE_V1_MIRROR_DB",
+        str(Path.home() / ".tribe-bridge/v1/mirror.sqlite"),
     )
+    store = InboxStore(store_path)
+    progress = MirrorProgressStore(store_path)
     failures = []
     mirrored = 0
     for endpoint in endpoints:
@@ -116,16 +122,18 @@ def main():
                             keys=keys,
                             now_ms=now,
                         )
-                        # Long payloads are chunked so no Telegram message
-                        # exceeds the 4096-char API limit (issue #44). If a
-                        # later part fails, the claim is released and the
-                        # whole message is re-sent on retry — earlier parts
-                        # may appear duplicated in Telegram in that rare
-                        # transient-failure case.
-                        for part in policy.render_parts(
+                        parts = policy.render_parts(
                             payload, claim["envelope"]
-                        ):
-                            telegram.send_rendered(part)
+                        )
+                        deliver_rendered_parts(
+                            progress,
+                            sender_id=sender,
+                            message_id=message_id,
+                            envelope_sha256=claim["envelope_sha256"],
+                            parts=parts,
+                            send=telegram.send_rendered,
+                            now_ms=now,
+                        )
                         store.finish(
                             sender,
                             message_id,
@@ -133,6 +141,7 @@ def main():
                             payload=payload,
                             now_ms=now,
                         )
+                        progress.clear(sender, message_id)
                         mirrored += 1
                         outcome = "processed"
                     except (
@@ -147,10 +156,17 @@ def main():
                             payload=None,
                             now_ms=now,
                         )
+                        progress.clear(sender, message_id)
                         outcome = "terminal_failed"
-                    except RuntimeError:
+                    except MirrorDeliveryError as exc:
                         store.release(sender, message_id)
                         outcome = "retryable_failed"
+                        failures.append(
+                            exc.failure_record(
+                                endpoint=endpoint,
+                                message_id=message_id,
+                            )
+                        )
                 ack = make_ack(
                     claim, keys=keys, outcome=outcome, now_ms=now
                 )

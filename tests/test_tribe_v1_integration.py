@@ -5,14 +5,15 @@ import subprocess
 import sys
 import tempfile
 import threading
-import urllib.request
 import unittest
+import urllib.request
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
+
+from v1_fixtures import NOW, make_material, resign_directory, signing_key
 
 import tribe_protocol_v1 as protocol
 from tribe_broker_v1 import RequestReplay, SQLiteBroker
@@ -36,19 +37,22 @@ from tribe_directory_v1 import (
     DirectoryError,
     directory_sha256,
 )
-from tribe_mirror_v1 import (
-    TELEGRAM_MESSAGE_LIMIT,
-    MirrorPolicyError,
-    TelegramPolicy,
-)
 from tribe_locality_v1 import LocalityPolicyError
+from tribe_mirror_v1 import (
+    MAX_MIRROR_PARTS,
+    TELEGRAM_MESSAGE_LIMIT,
+    MirrorDeliveryError,
+    MirrorPolicyError,
+    MirrorProgressStore,
+    TelegramPolicy,
+    deliver_rendered_parts,
+)
 from tribe_service_v1 import (
     BoundedThreadingHTTPServer,
     TribeV1Handler,
     TribeV1Service,
 )
 from tribe_transport_v1 import wrap_request
-from v1_fixtures import NOW, make_material, resign_directory, signing_key
 
 
 class MutableClock:
@@ -584,7 +588,7 @@ class TribeV1IntegrationTests(unittest.TestCase):
 
         # Entity-heavy text never splits an HTML entity across parts:
         # every part body unescapes cleanly and concatenates to the source.
-        entity_text = "&<>\"'" * 2000
+        entity_text = "&<>\"'" * 500
         parts = policy.render_parts(make_payload(entity_text), envelope)
         self.assertGreater(len(parts), 1)
         rebuilt = []
@@ -598,6 +602,93 @@ class TribeV1IntegrationTests(unittest.TestCase):
         # single message Telegram would reject.
         with self.assertRaises(MirrorPolicyError):
             policy.render(make_payload(long_text), envelope)
+
+    def test_mirror_retry_resumes_after_confirmed_prefix(self):
+        progress_path = self.root / "mirror-progress.sqlite"
+        progress = MirrorProgressStore(progress_path)
+        parts = ["part one", "part two", "part three"]
+        delivered = []
+        fail_once = {"part three"}
+
+        def send(part):
+            if part in fail_once:
+                fail_once.remove(part)
+                raise RuntimeError("simulated Telegram failure")
+            delivered.append(part)
+
+        values = {
+            "sender_id": "alice",
+            "message_id": "019f0000-0000-7000-8000-000000000066",
+            "envelope_sha256": "a" * 64,
+            "parts": parts,
+            "send": send,
+            "now_ms": NOW,
+        }
+        with self.assertRaises(MirrorDeliveryError) as raised:
+            deliver_rendered_parts(progress, **values)
+        self.assertEqual(raised.exception.part_index, 3)
+        self.assertEqual(delivered, parts[:2])
+        failure = raised.exception.failure_record(
+            endpoint="https://broker.invalid", message_id=values["message_id"]
+        )
+        self.assertEqual(failure["failed_part_index"], 3)
+        self.assertNotIn("part one", json.dumps(failure))
+
+        # A new store object models the next service process after restart.
+        progress = MirrorProgressStore(progress_path)
+        deliver_rendered_parts(progress, **values)
+        self.assertEqual(delivered, parts)
+        progress.clear(values["sender_id"], values["message_id"])
+
+    def test_mirror_retry_rejects_changed_rendering_before_delivery(self):
+        progress_path = self.root / "mirror-render-conflict.sqlite"
+        progress = MirrorProgressStore(progress_path)
+        values = {
+            "sender_id": "alice",
+            "message_id": "019f0000-0000-7000-8000-000000000068",
+            "envelope_sha256": "b" * 64,
+            "parts": ["one", "two"],
+            "now_ms": NOW,
+        }
+        self.assertEqual(progress.resume(**values), 0)
+        sent = []
+        with self.assertRaisesRegex(MirrorPolicyError, "rendering differs"):
+            deliver_rendered_parts(
+                MirrorProgressStore(progress_path),
+                **{**values, "parts": ["changed"], "send": sent.append},
+            )
+        self.assertEqual(sent, [])
+
+    def test_mirror_suppresses_large_opaque_artifacts(self):
+        policy = TelegramPolicy.from_values(
+            chat_ids=[-1001],
+            user_ids=[7],
+            audiences=["worker@localhost"],
+            audience_types=["direct"],
+            classifications=["private"],
+        )
+        envelope = {
+            "audience": {"type": "direct", "id": "worker@localhost"},
+            "sender": {"id": "alice"},
+            "message_id": "019f0000-0000-7000-8000-000000000067",
+        }
+
+        def make_payload(text):
+            return message_payload(
+                sender="alice",
+                to="worker@localhost",
+                text=text,
+                classification="private",
+            )
+
+        opaque = "A" * (3500 * 35)
+        self.assertEqual(len(policy._chunk_text(opaque)), 35)
+        parts = policy.render_parts(make_payload(opaque), envelope)
+        self.assertEqual(len(parts), 1)
+        self.assertIn("payload omitted", parts[0])
+        self.assertIn("sha256", parts[0])
+        self.assertNotIn(opaque[:100], parts[0])
+        self.assertLessEqual(len(parts[0]), TELEGRAM_MESSAGE_LIMIT)
 
     def test_mirror_policy_rejects_malformed_transparency_allowlists(self):
         base = {
