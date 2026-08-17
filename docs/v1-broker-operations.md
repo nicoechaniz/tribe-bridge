@@ -64,15 +64,17 @@ incident evidence outside the protocol runtime.
 
 ## Telegram mirror retry boundary
 
-The mirror's local SQLite database also stores the digest and next unconfirmed
-part for each deterministic Telegram rendering. A retry resumes at that
-cursor; the durably recorded prefix is not replayed from part one. Because
-Telegram has no request idempotency key, an interrupted response for the
-current part remains ambiguous; this cursor bounds that ambiguity to one part
-rather than the whole prefix. A changed rendering for the same envelope fails
-closed instead of mixing two renderings. Retryable output names only the
-endpoint, message ID, failed part index, total parts and a stable error code;
-it never includes plaintext or credentials.
+The mirror stores the digest and next unconfirmed part for each deterministic
+Telegram rendering in an owner-only SQLite sidecar next to the inbox-effect
+database. Keeping those writers separate lets the service release and ACK a
+claim even when cursor persistence itself is temporarily locked. A retry
+resumes at that cursor; the durably recorded prefix is not replayed from part
+one. Because Telegram has no request idempotency key, an interrupted response
+for the current part remains ambiguous; this cursor bounds that ambiguity to
+one part rather than the whole prefix. A changed rendering for the same
+envelope fails closed instead of mixing two renderings. Retryable output names
+only the endpoint, message ID, failed part index, total parts and a stable error
+code; it never includes plaintext or credentials.
 
 The mirror is a human-observation path, not an artifact transport. More than
 eight rendered parts, or a large opaque encoding, becomes one notice containing
