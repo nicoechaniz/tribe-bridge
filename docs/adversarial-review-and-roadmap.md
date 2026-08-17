@@ -1,10 +1,11 @@
 # Tribe Bridge transitional roadmap
 
-Status: reconciled 2026-08-16. The merged Tribe baseline is
+Status: reconciled 2026-08-17. The merged Tribe baseline is
 `187c61d881e6de830a029027144193645f2c7f62` (tree
 `84da16611be62581d9a049d9f567652c4cc4e61b`). PR #65 carries issue #64's RC
-lineage; its exact qualified source boundary and independent review state are
-recorded in the release-candidate receipt and PR checks.
+lineage plus issue #66's mirror-retry repair; its exact qualified source
+boundary and independent review state are recorded in the release-candidate
+receipt and PR checks.
 
 Matrix is merged at `09414d6edd9586f539be8272c4979d0b36c86b87`
 (tree `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`). Cluster is merged at
@@ -25,7 +26,7 @@ Tribe Bridge remains a narrow transitional carrier:
 - each audience epoch has one recipient policy, with no compatibility valve
   for an in-place observer mutation.
 
-## Local implementation gate — issue #64 / PR #65
+## Local implementation gate — issues #64 and #66 / PR #65
 
 The candidate lineage demonstrates the following entirely with disposable
 state. Its final exact head must repeat the full qualification and independent
@@ -57,7 +58,12 @@ review before merge:
    compilation and diff checks pass cleanly with no rerun used as evidence. A
    checked-in receipt binds the qualified source archive and exact requirements
    by SHA-256 and records rather than crosses the remaining human gates.
-7. An independent adversarial reviewer approves the exact candidate hash before
+7. Telegram multipart retry persists the deterministic rendering and next
+   unconfirmed part, never replays the durable prefix, reports the exact failed
+   part without plaintext, and collapses 35-part or opaque artifacts to one
+   content-addressed human notice. The current part's response-loss ambiguity
+   is explicit rather than overstated as global exactly-once delivery.
+8. An independent adversarial reviewer approves the exact candidate hash before
    merge. The author does not self-approve or bypass branch protection.
 
 ## Known clock boundary

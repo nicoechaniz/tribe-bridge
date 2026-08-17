@@ -25,6 +25,10 @@ locality and explicit Telegram visibility.
   possible two-broker copy.
 - Delivery is at-least-once. External effects require the durable
   `(sender_id, message_id)` idempotency key.
+- Telegram multipart retries resume from a durable local cursor and never
+  replay the recorded prefix. The current part can remain ambiguous because
+  Telegram has no request idempotency key. Payloads beyond eight parts and
+  large opaque encodings produce one hash-and-provenance notice instead.
 - Tribe ACK proves only Tribe delivery state. Matrix intake and semantic
   receipts are separate authenticated facts.
 - WAL is forbidden on SQLite versions affected by the 2026 WAL-reset bug.
@@ -33,8 +37,9 @@ locality and explicit Telegram visibility.
 
 ## Integrated release-candidate references
 
-- Tribe PR #65 / issue #64: the exact qualified source boundary and independent
-  review state are recorded in the release-candidate receipt and PR checks.
+- Tribe PR #65 / issues #64 and #66: the exact qualified source boundary and
+  independent review state are recorded in the release-candidate receipt and
+  PR checks.
 - Matrix merged: `09414d6edd9586f539be8272c4979d0b36c86b87`
   (tree `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`).
 - Cluster merged: `820e3792a227b1848681a3421b113e8822c8d08a`
