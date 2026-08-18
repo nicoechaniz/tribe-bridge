@@ -37,15 +37,20 @@ locality and explicit Telegram visibility.
 
 ## Integrated release-candidate references
 
-- Tribe PR #65 / issues #64 and #66: the exact qualified source boundary and
-  independent review state are recorded in the release-candidate receipt and
-  PR checks.
-- Matrix merged: `09414d6edd9586f539be8272c4979d0b36c86b87`
-  (tree `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`).
-- Cluster merged: `820e3792a227b1848681a3421b113e8822c8d08a`
-  (tree `4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8`).
+- Tribe PR #65 / issues #64 and #66 merged as
+  `294e1194db6cd60d9349a2d43938475bbd1c8c20` (tree
+  `bcba9989a38519df87ecbb6c87a33a2f9740b85d`). The receipt binds the stable
+  qualified source `8ce2c9d4c6b3e4e94108600d4170f169ced26303` (tree
+  `0431882544ebd72bfbfbb343677b2557ea4fdbce`).
+- Matrix merged: `bf5f7415f075af09442973144bc529f4c5ce7985`
+  (tree `f38862427d5713b21ca9d0859a80ddbacfefa255`).
+- Cluster merged: `d384a8092658e27c2918a8ac81e90ad999bb22d4`
+  (tree `ad562c4216e47d7aa2a689758591c897783f3755`).
 
-These references are provenance, not deployment evidence. Canonical tracking
-lives in `nicoechaniz/tribe-bridge` issues and AlterMundi Project #8. Human
+These references are provenance, not deployment evidence. The external
+integrated manifest records the final three repository heads after this
+metadata handoff merges; this file cannot name its own future merge commit.
+Canonical tracking lives in `nicoechaniz/tribe-bridge` issues and AlterMundi
+Project #8. Human
 approval is still required for real custody, participant contact, publication,
 provisioning, service changes, cutover and eventual retirement.

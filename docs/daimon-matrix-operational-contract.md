@@ -10,12 +10,15 @@ starting baselines for the integrated work were Matrix
 `187c61d881e6de830a029027144193645f2c7f62`. They are provenance only, not
 current candidate pins.
 
-The current merged Matrix integration point is
-`09414d6edd9586f539be8272c4979d0b36c86b87`, tree
-`d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`. The merged Cluster integration
-point is `820e3792a227b1848681a3421b113e8822c8d08a`, tree
-`4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8`. Tribe must not anticipate or pin
-another Matrix or Cluster head until that head is reviewed and merged.
+The merged Matrix integration point is
+`bf5f7415f075af09442973144bc529f4c5ce7985`, tree
+`f38862427d5713b21ca9d0859a80ddbacfefa255`. The merged Cluster integration
+point is `d384a8092658e27c2918a8ac81e90ad999bb22d4`, tree
+`ad562c4216e47d7aa2a689758591c897783f3755`. Tribe itself merged the reviewed
+software boundary `294e1194db6cd60d9349a2d43938475bbd1c8c20`, tree
+`bcba9989a38519df87ecbb6c87a33a2f9740b85d`. A later metadata-only merge may
+record these facts without changing their functional trees; the external
+integrated manifest is authoritative for the resulting final repository heads.
 
 No current deployment is assumed. Read [`../RESUME.md`](../RESUME.md) and the
 Matrix repository `RESUME.md` before operational work. Tribe's

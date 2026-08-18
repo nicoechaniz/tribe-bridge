@@ -1,17 +1,20 @@
 # Tribe Bridge transitional roadmap
 
-Status: reconciled 2026-08-17. The merged Tribe baseline is
-`187c61d881e6de830a029027144193645f2c7f62` (tree
-`84da16611be62581d9a049d9f567652c4cc4e61b`). PR #65 carries issue #64's RC
-lineage plus issue #66's mirror-retry repair; its exact qualified source
-boundary and independent review state are recorded in the release-candidate
-receipt and PR checks.
+Status: reconciled 2026-08-18. Tribe PR #65 merged issue #64's RC lineage plus
+issue #66's mirror-retry repair as
+`294e1194db6cd60d9349a2d43938475bbd1c8c20` (tree
+`bcba9989a38519df87ecbb6c87a33a2f9740b85d`). Its stable qualified source is
+`8ce2c9d4c6b3e4e94108600d4170f169ced26303` (tree
+`0431882544ebd72bfbfbb343677b2557ea4fdbce`), with 148 tests and zero failures
+on Python 3.10-3.13.
 
-Matrix is merged at `09414d6edd9586f539be8272c4979d0b36c86b87`
-(tree `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`). Cluster is merged at
-`820e3792a227b1848681a3421b113e8822c8d08a` (tree
-`4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8`). These are code/provenance facts,
-not claims of deployment or live custody.
+Matrix is merged at `bf5f7415f075af09442973144bc529f4c5ce7985`
+(tree `f38862427d5713b21ca9d0859a80ddbacfefa255`). Cluster is merged at
+`d384a8092658e27c2918a8ac81e90ad999bb22d4` (tree
+`ad562c4216e47d7aa2a689758591c897783f3755`). These are code/provenance facts,
+not claims of deployment or live custody. The later external integrated
+manifest records the final metadata heads without creating a repository
+self-reference.
 
 ## Role in the integrated release candidate
 
@@ -26,11 +29,10 @@ Tribe Bridge remains a narrow transitional carrier:
 - each audience epoch has one recipient policy, with no compatibility valve
   for an in-place observer mutation.
 
-## Local implementation gate — issues #64 and #66 / PR #65
+## Completed local implementation gate — issues #64 and #66 / PR #65
 
-The candidate lineage demonstrates the following entirely with disposable
-state. Its final exact head must repeat the full qualification and independent
-review before merge:
+The merged candidate lineage demonstrated the following entirely with
+disposable state:
 
 1. Each synthetic active agent independently generates successor private keys
    and signs a public announcement with its current key.
@@ -64,8 +66,9 @@ review before merge:
    four parts to one content-addressed human notice without attempting to
    classify its contents. The current part's response-loss ambiguity
    is explicit rather than overstated as global exactly-once delivery.
-8. An independent adversarial reviewer approves the exact candidate hash before
-   merge. The author does not self-approve or bypass branch protection.
+8. An independent adversarial reviewer approved each exact corrected candidate
+   before normal merge. The author did not self-approve or bypass branch
+   protection.
 
 ## Known clock boundary
 
