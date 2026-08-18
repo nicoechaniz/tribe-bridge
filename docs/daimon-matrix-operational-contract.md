@@ -13,8 +13,8 @@ current candidate pins.
 The merged Matrix integration point is
 `bf5f7415f075af09442973144bc529f4c5ce7985`, tree
 `f38862427d5713b21ca9d0859a80ddbacfefa255`. The merged Cluster integration
-point is `d384a8092658e27c2918a8ac81e90ad999bb22d4`, tree
-`ad562c4216e47d7aa2a689758591c897783f3755`. Tribe itself merged the reviewed
+point is `78b29af5e04eb008f5090dbcd3338ed7c011ee4b`, tree
+`8c787d51cbcbb35ebd494c0b6dbf5e167f5d3fdb`. Tribe itself merged the reviewed
 software boundary `294e1194db6cd60d9349a2d43938475bbd1c8c20`, tree
 `bcba9989a38519df87ecbb6c87a33a2f9740b85d`. A later metadata-only merge may
 record these facts without changing their functional trees; the external

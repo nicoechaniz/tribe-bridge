@@ -10,8 +10,8 @@ on Python 3.10-3.13.
 
 Matrix is merged at `bf5f7415f075af09442973144bc529f4c5ce7985`
 (tree `f38862427d5713b21ca9d0859a80ddbacfefa255`). Cluster is merged at
-`d384a8092658e27c2918a8ac81e90ad999bb22d4` (tree
-`ad562c4216e47d7aa2a689758591c897783f3755`). These are code/provenance facts,
+`78b29af5e04eb008f5090dbcd3338ed7c011ee4b` (tree
+`8c787d51cbcbb35ebd494c0b6dbf5e167f5d3fdb`). These are code/provenance facts,
 not claims of deployment or live custody. The later external integrated
 manifest records the final metadata heads without creating a repository
 self-reference.
