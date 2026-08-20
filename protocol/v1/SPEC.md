@@ -1,8 +1,9 @@
 # Tribe Protocol v1
 
 Status: release-candidate normative specification. v1 is the repository's only
-supported protocol; this status does not assert a deployment. The final PR #65
-head still requires its exact independent review and merge gates.
+supported protocol; this status does not assert a deployment. PR #65 completed
+exact-head independent review and merged as the V0 Tribe software boundary.
+Later metadata-only handoffs do not change this protocol implicitly.
 
 The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD, SHOULD NOT,
 RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL are to be interpreted as

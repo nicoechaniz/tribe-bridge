@@ -1,32 +1,34 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-17T23:54:06Z",
+  "generated_at": "2026-08-20T16:25:00Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "58dd828375e08d090f1940cae8f4c233dbbb61fa8999d3f304997d03ec4b33b5"
+    "sha256": "5e6abcd0814798c3711545f95435511d23d349b92391b78e57b13670929c3e53"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
     "pull_request": 65,
     "issue": 64,
-    "commit": "95792b430bcbc468c02a32343a944af9002b8742",
+    "commit": "8ce2c9d4c6b3e4e94108600d4170f169ced26303",
     "tree": "0431882544ebd72bfbfbb343677b2557ea4fdbce",
+    "merged_software_commit": "294e1194db6cd60d9349a2d43938475bbd1c8c20",
+    "merged_software_tree": "bcba9989a38519df87ecbb6c87a33a2f9740b85d",
     "included_issues": [64, 66]
   },
   "integrated_boundaries": {
-    "matrix_merged_commit": "09414d6edd9586f539be8272c4979d0b36c86b87",
-    "matrix_tree": "d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad",
-    "cluster_merged_commit": "820e3792a227b1848681a3421b113e8822c8d08a",
-    "cluster_tree": "4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8"
+    "matrix_merged_commit": "bf5f7415f075af09442973144bc529f4c5ce7985",
+    "matrix_tree": "f38862427d5713b21ca9d0859a80ddbacfefa255",
+    "cluster_merged_commit": "cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463",
+    "cluster_tree": "4fb54bbc2ad1ac9c424686c6c1183c8144c33b63"
   },
   "archive": {
     "format": "git-archive-tar",
-    "prefix": "tribe-bridge-95792b430bcb/",
-    "command": "git archive --format=tar --prefix=tribe-bridge-95792b430bcb/ --output=tribe-bridge-95792b430bcb-source.tar 95792b430bcbc468c02a32343a944af9002b8742 -- . ':(exclude)docs/release-candidate-receipt.json'",
+    "prefix": "tribe-bridge-8ce2c9d4c6b3/",
+    "command": "git archive --format=tar --prefix=tribe-bridge-8ce2c9d4c6b3/ --output=tribe-bridge-8ce2c9d4c6b3-source.tar 8ce2c9d4c6b3e4e94108600d4170f169ced26303 -- . ':(exclude)docs/release-candidate-receipt.json'",
     "bytes": 860160,
-    "sha256": "93326d14c33ead4eccd921f3f37894f49a1fd552d48df2246f2c911f67d0990a",
+    "sha256": "a0fe9f548e28764fedbd2d595066d2c93b1f4144b789e7cfdb39f4d2362c4202",
     "receipt_in_archive": false,
     "receipt_note": "The archive excludes this path so it cannot contain a stale predecessor receipt or create a self-referential archive hash."
   },
@@ -108,7 +110,6 @@
     "git_diff_check": "pass"
   },
   "human_gates_remaining": [
-    "independent approval of the final exact PR #65 head and normal protected merge",
     "selection and independent provisioning of real custody holders",
     "participant consent before contact or operation",
     "approval of real key generation, governance signatures and directory publication",

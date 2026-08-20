@@ -6,23 +6,23 @@ service, host state, directory epoch, key custody or deployment is claimed by
 this checkpoint. Treat infrastructure references in historical evidence as
 non-current until a separate exact operational gate is approved.
 
-Last reconciled: 2026-08-17.
+Last reconciled: 2026-08-20.
 
 ## Exact integrated boundary
 
-- Tribe merged baseline: commit
-  `187c61d881e6de830a029027144193645f2c7f62`, tree
-  `84da16611be62581d9a049d9f567652c4cc4e61b`.
-- Tribe PR #65 carries the issue #64 release-candidate lineage and the issue
-  #66 mirror-retry repair. Its exact qualified source boundary and independent
-  review state are recorded in the release-candidate receipt and PR checks; no
-  earlier candidate is current.
+- Tribe PR #65 merged as commit
+  `294e1194db6cd60d9349a2d43938475bbd1c8c20`, tree
+  `bcba9989a38519df87ecbb6c87a33a2f9740b85d`. Its stable qualified
+  functional/material source is
+  `8ce2c9d4c6b3e4e94108600d4170f169ced26303`, tree
+  `0431882544ebd72bfbfbb343677b2557ea4fdbce`; 148 tests completed with
+  zero failures on every supported Python 3.10-3.13 interpreter.
 - Matrix is merged at commit
-  `09414d6edd9586f539be8272c4979d0b36c86b87`, tree
-  `d7146e291ae3f8313dc0b3d3c3a0b5e5f94d33ad`.
+  `bf5f7415f075af09442973144bc529f4c5ce7985`, tree
+  `f38862427d5713b21ca9d0859a80ddbacfefa255`.
 - Cluster is merged at commit
-  `820e3792a227b1848681a3421b113e8822c8d08a`, tree
-  `4f62eb4f6eff1dfafbd477339a86fa7d5e70a5d8`.
+  `cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463`, tree
+  `4fb54bbc2ad1ac9c424686c6c1183c8144c33b63`.
 
 These hashes identify code and review boundaries only. They do not assert that
 any of the three components is deployed.
@@ -53,18 +53,17 @@ The preserved epoch-5 evidence shows the earliest v1 keys expiring on
 finish by **2026-08-27 UTC** to retain margin. Those dates motivate synthetic
 rotation and recovery tests; they do not authorize a live rotation.
 
-## Resume order
+## Successor qualification protocol
 
-1. Qualify the final PR #65 head from a clean environment across Python
-   3.10-3.13 and verify its content-addressed receipt.
-2. Reproduce the issue #66 retry cases: no replay of the durably recorded
-   multipart prefix, one notice for a 35-part artifact, and structured failure
-   output without payload content.
-3. Obtain independent review on that exact head and merge only after both issue
-   claims, PR evidence and required checks agree.
-4. Keep issues #56 and #59 open for live human gates, or supersede them only
+1. Any metadata successor is accepted only after exact-head checks,
+   independent review and normal merge; it must not change the qualified
+   functional/material tree implicitly.
+2. The external integrated manifest, not self-referential prose in this
+   repository, records the resulting final Matrix, Cluster and Tribe heads,
+   exact artifacts and replayed offline-install evidence.
+3. Keep issues #56 and #59 open for live human gates, or supersede them only
    with explicit traceability.
-5. Do not activate, publish, provision a participant, create real custody,
+4. Do not activate, publish, provision a participant, create real custody,
    install services/timers, contact anyone or archive Tribe without a separate
    content-addressed plan and authorization.
 
