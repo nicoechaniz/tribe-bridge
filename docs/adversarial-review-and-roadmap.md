@@ -1,6 +1,6 @@
 # Tribe Bridge transitional roadmap
 
-Status: reconciled 2026-08-18. Tribe PR #65 merged issue #64's RC lineage plus
+Status: reconciled 2026-08-20. Tribe PR #65 merged issue #64's RC lineage plus
 issue #66's mirror-retry repair as
 `294e1194db6cd60d9349a2d43938475bbd1c8c20` (tree
 `bcba9989a38519df87ecbb6c87a33a2f9740b85d`). Its stable qualified source is

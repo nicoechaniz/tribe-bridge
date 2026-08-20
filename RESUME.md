@@ -6,7 +6,7 @@ service, host state, directory epoch, key custody or deployment is claimed by
 this checkpoint. Treat infrastructure references in historical evidence as
 non-current until a separate exact operational gate is approved.
 
-Last reconciled: 2026-08-18.
+Last reconciled: 2026-08-20.
 
 ## Exact integrated boundary
 
