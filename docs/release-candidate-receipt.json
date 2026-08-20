@@ -1,11 +1,11 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-18T17:37:00Z",
+  "generated_at": "2026-08-20T16:25:00Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "d6963eba4dacd6cf1eced23c544dd91fccc1ab0d4e683468099c3be17084978c"
+    "sha256": "5e6abcd0814798c3711545f95435511d23d349b92391b78e57b13670929c3e53"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
@@ -20,8 +20,8 @@
   "integrated_boundaries": {
     "matrix_merged_commit": "bf5f7415f075af09442973144bc529f4c5ce7985",
     "matrix_tree": "f38862427d5713b21ca9d0859a80ddbacfefa255",
-    "cluster_merged_commit": "78b29af5e04eb008f5090dbcd3338ed7c011ee4b",
-    "cluster_tree": "8c787d51cbcbb35ebd494c0b6dbf5e167f5d3fdb"
+    "cluster_merged_commit": "cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463",
+    "cluster_tree": "4fb54bbc2ad1ac9c424686c6c1183c8144c33b63"
   },
   "archive": {
     "format": "git-archive-tar",

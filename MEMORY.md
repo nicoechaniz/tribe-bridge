@@ -44,8 +44,8 @@ locality and explicit Telegram visibility.
   `0431882544ebd72bfbfbb343677b2557ea4fdbce`).
 - Matrix merged: `bf5f7415f075af09442973144bc529f4c5ce7985`
   (tree `f38862427d5713b21ca9d0859a80ddbacfefa255`).
-- Cluster merged: `78b29af5e04eb008f5090dbcd3338ed7c011ee4b`
-  (tree `8c787d51cbcbb35ebd494c0b6dbf5e167f5d3fdb`).
+- Cluster merged: `cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463`
+  (tree `4fb54bbc2ad1ac9c424686c6c1183c8144c33b63`).
 
 These references are provenance, not deployment evidence. The external
 integrated manifest records the final three repository heads after this
