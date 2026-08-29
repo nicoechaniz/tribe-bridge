@@ -1,7 +1,8 @@
 # V0 release-candidate resume checkpoint
 
-Status: Tribe Bridge is a transitional, non-authoritative transport component.
-Its v1 protocol is the repository's only supported protocol, but no running
+Status: Tribe Bridge is a superseded experimental transport scheduled for
+retirement. Its v1 protocol remains the repository's only implemented protocol,
+but it is not a Matrix release, migration or compatibility gate. No running
 service, host state, directory epoch, key custody or deployment is claimed by
 this checkpoint. Treat infrastructure references in historical evidence as
 non-current until a separate exact operational gate is approved.
@@ -30,6 +31,19 @@ Last reconciled: 2026-08-29.
 These hashes identify code and review boundaries only. They do not assert that
 any of the three components is deployed.
 
+## Canonical retirement decision
+
+Issue #71 records that all Tribe operational state is disposable, including
+messages, queues, directories, keys, databases, profiles, routes, timers and
+configuration. Nothing is migrated to Matrix and there is no compatibility,
+downgrade, fallback or dual-run phase. Matrix native birth and continuity must
+be qualified with Tribe absent.
+
+This decision does not itself touch a service or delete data. Runtime removal,
+stable Matrix publication, a final source-only Tribe release, and setting the
+public repository to read-only archive mode remain distinct content-addressed
+plans with their own human GOs. Public Git history is retained without rewrite.
+
 ## Current protocol and operational boundary
 
 - Tribe v1 is the only accepted protocol. There is no v0 parser, downgrade,
@@ -49,12 +63,13 @@ any of the three components is deployed.
 - Recovery after a signed/accepted directory advance is forward-only. Restoring
   an older directory or anti-rollback state is not a rollback mechanism.
 
-## Time-critical historical fact, not authorization
+## Historical deadline, not authorization
 
 The preserved epoch-5 evidence shows the earliest v1 keys expiring on
 **2026-08-30 UTC**. A hypothetical rollout from that state would have needed to
-finish by **2026-08-27 UTC** to retain margin. Those dates motivate synthetic
-rotation and recovery tests; they do not authorize a live rotation.
+finish by **2026-08-27 UTC** to retain margin. The state is not renewed or
+recovered for retirement: the dates remain test provenance and do not
+authorize a live rotation.
 
 ## Successor qualification protocol
 
@@ -64,11 +79,12 @@ rotation and recovery tests; they do not authorize a live rotation.
 2. The external integrated manifest, not self-referential prose in this
    repository, records the resulting final Matrix, Cluster and Tribe heads,
    exact artifacts and replayed offline-install evidence.
-3. Keep issues #56 and #59 open for live human gates, or supersede them only
-   with explicit traceability.
-4. Do not activate, publish, provision a participant, create real custody,
-   install services/timers, contact anyone or archive Tribe without a separate
-   content-addressed plan and authorization.
+3. Issue #71 explicitly supersedes issues #56 and #59 as Matrix release gates;
+   neither zero-SSH provisioning nor live Tribe key rotation is required.
+4. Do not activate, publish, provision a participant, create real Tribe
+   custody, install services/timers, contact anyone, remove a live service or
+   archive the repository without the applicable separate content-addressed
+   plan and authorization.
 
 The integrated roadmap is authoritative in the Matrix repository. Tribe's
 component roadmap is

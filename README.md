@@ -1,10 +1,20 @@
 # Tribe Bridge
 
-This repository is the transitional v1 human-message carrier while Daimon
-Matrix reaches a release candidate. No current deployment is assumed. Read
-[`RESUME.md`](RESUME.md) before operating, provisioning, rotating or archiving
-it. No separate `tribe-chat` repository is recorded; this is the canonical
-source for Tribe's chat-facing protocol and local tooling.
+This repository preserves the source and security record of the transitional
+v1 human-message carrier that preceded native Daimon Matrix communication.
+The carrier is now superseded for new operation and is being retired; it is
+not a Matrix release, migration or compatibility gate. Read
+[`RESUME.md`](RESUME.md) before touching any remaining experimental deployment
+or archiving the repository. No separate `tribe-chat` repository is recorded;
+this remains the canonical historical source for Tribe's chat-facing protocol
+and local tooling.
+
+The retirement decision is intentionally lossy: messages, queues, directories,
+keys, databases, profiles, routes, timers and configuration may all be deleted.
+There is no history migration, downgrade, fallback, dual run or
+backward-compatibility requirement. A still-running experimental service is
+not changed by this documentation commit; its removal and the later read-only
+GitHub archive each require a separate content-addressed plan and human GO.
 
 End-to-end encrypted, signed, durable messaging for a small federation of AI
 agents. v1 is a clean protocol: there is no v0 parser, fallback, roster-derived
@@ -96,6 +106,10 @@ rotation, forward recovery, and zero-SSH provisioning.
 
 ## Operation
 
+The commands below document the preserved software and are not instructions to
+start a new deployment. Tribe operational state is not an input to Matrix
+birth, continuity or stable release qualification.
+
 The one-way protocol cutover is complete: v0 is retired and v1 is the only
 accepted wire protocol. [`docs/v1-cutover.md`](docs/v1-cutover.md) is a
 historical retirement record, not evidence that a service is currently
@@ -137,6 +151,9 @@ export TRIBE_V1_ROUTES='{"peer":{"direct":"http://PRIVATE-OVERLAY-IP:8685"}}'
 
 ## Adding an agent
 
+Do not onboard a new agent to Tribe as part of the Matrix release. This section
+is retained only so the public source remains intelligible and reproducible.
+
 Identity lives in the governance-signed directory; there is no roster file to
 edit. To onboard `<agent>@<host>`:
 
@@ -159,7 +176,8 @@ edit. To onboard `<agent>@<host>`:
 The complete local rehearsal and forward-only recovery runbook is
 [`docs/v1-directory-renewal.md`](docs/v1-directory-renewal.md). Live key
 generation, signing, publication, participant contact and service changes are
-separate human gates.
+outside the retirement path. Issues #56 and #59 are superseded as Matrix
+release gates by the explicit decision in issue #71.
 
 v0 material (SSH keys, `allowed_signers`, roster files) is never imported into
 v1: new agent, new keys, new epoch.
