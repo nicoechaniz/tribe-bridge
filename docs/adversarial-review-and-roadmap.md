@@ -1,6 +1,6 @@
 # Tribe Bridge transitional roadmap
 
-Status: reconciled 2026-08-20. Tribe PR #65 merged issue #64's RC lineage plus
+Status: reconciled 2026-08-29. Tribe PR #65 merged issue #64's RC lineage plus
 issue #66's mirror-retry repair as
 `294e1194db6cd60d9349a2d43938475bbd1c8c20` (tree
 `bcba9989a38519df87ecbb6c87a33a2f9740b85d`). Its stable qualified source is
@@ -8,13 +8,16 @@ issue #66's mirror-retry repair as
 `0431882544ebd72bfbfbb343677b2557ea4fdbce`), with 148 tests and zero failures
 on Python 3.10-3.13.
 
-Matrix is merged at `bf5f7415f075af09442973144bc529f4c5ce7985`
-(tree `f38862427d5713b21ca9d0859a80ddbacfefa255`). Cluster is merged at
-`cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463` (tree
-`4fb54bbc2ad1ac9c424686c6c1183c8144c33b63`). These are code/provenance facts,
-not claims of deployment or live custody. The later external integrated
-manifest records the final metadata heads without creating a repository
-self-reference.
+Matrix PR #126 is merged at
+`899c6d95cc0205b1b7a327dda48095fc8bf94821` (tree
+`0af4dfdb3506cfe826ee53533f67eee88fb96389`), with exact reviewed runtime
+material `52945123ec4d323c03eaafe216dce8a1d7e48565` at the same tree. Cluster
+PR #101 is merged at `49a919c836aec927f443857edabf34d37c9494e8`
+(tree `cb7254899230b5264313681617e445a4df0ef14f`); approved head
+`417d8844c360265ade73c590cdf771a8c26b92fe` has the same tree and pins that
+runtime material. These are code/provenance facts, not claims of deployment or
+live custody. The later external integrated manifest records the final
+metadata heads without creating a repository self-reference.
 
 ## Role in the integrated release candidate
 

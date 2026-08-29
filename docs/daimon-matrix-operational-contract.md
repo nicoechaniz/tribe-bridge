@@ -1,6 +1,6 @@
 # Daimon Matrix operational contract
 
-## 2026-08-16 release-candidate boundary
+## 2026-08-29 release-candidate boundary
 
 This document preserves Tribe Bridge's local descriptor/selector boundary. It
 does not define the current Matrix roadmap or authority model. The historical
@@ -10,14 +10,18 @@ starting baselines for the integrated work were Matrix
 `187c61d881e6de830a029027144193645f2c7f62`. They are provenance only, not
 current candidate pins.
 
-The merged Matrix integration point is
-`bf5f7415f075af09442973144bc529f4c5ce7985`, tree
-`f38862427d5713b21ca9d0859a80ddbacfefa255`. The merged Cluster integration
-point is `cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463`, tree
-`4fb54bbc2ad1ac9c424686c6c1183c8144c33b63`. Tribe itself merged the reviewed
-software boundary `294e1194db6cd60d9349a2d43938475bbd1c8c20`, tree
-`bcba9989a38519df87ecbb6c87a33a2f9740b85d`. A later metadata-only merge may
-record these facts without changing their functional trees; the external
+The merged Matrix integration point is PR #126 merge
+`899c6d95cc0205b1b7a327dda48095fc8bf94821`, tree
+`0af4dfdb3506cfe826ee53533f67eee88fb96389`; its exact reviewed runtime
+material is `52945123ec4d323c03eaafe216dce8a1d7e48565`, with the same tree. The
+merged Cluster integration point is PR #101 merge
+`49a919c836aec927f443857edabf34d37c9494e8`, tree
+`cb7254899230b5264313681617e445a4df0ef14f`; its exact approved head is
+`417d8844c360265ade73c590cdf771a8c26b92fe`, with the same tree, and it pins
+that Matrix runtime material. Tribe itself merged the reviewed software
+boundary `294e1194db6cd60d9349a2d43938475bbd1c8c20`, tree
+`bcba9989a38519df87ecbb6c87a33a2f9740b85d`. This metadata-only successor
+records those facts without changing Tribe's functional boundary; the external
 integrated manifest is authoritative for the resulting final repository heads.
 
 No current deployment is assumed. Read [`../RESUME.md`](../RESUME.md) and the

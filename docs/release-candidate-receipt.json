@@ -1,11 +1,11 @@
 {
   "schema": "tribe-bridge-release-candidate-receipt/v1",
-  "generated_at": "2026-08-20T16:25:00Z",
+  "generated_at": "2026-08-29T08:16:43Z",
   "deployment_asserted": false,
   "receipt_content_address": {
     "algorithm": "sha256",
     "canonicalization": "RFC 8785 JSON with receipt_content_address omitted",
-    "sha256": "5e6abcd0814798c3711545f95435511d23d349b92391b78e57b13670929c3e53"
+    "sha256": "521ce39c60d277670f73baa863be624d7cb889abe1016754db23819dfe3e0544"
   },
   "source": {
     "repository": "nicoechaniz/tribe-bridge",
@@ -18,10 +18,14 @@
     "included_issues": [64, 66]
   },
   "integrated_boundaries": {
-    "matrix_merged_commit": "bf5f7415f075af09442973144bc529f4c5ce7985",
-    "matrix_tree": "f38862427d5713b21ca9d0859a80ddbacfefa255",
-    "cluster_merged_commit": "cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463",
-    "cluster_tree": "4fb54bbc2ad1ac9c424686c6c1183c8144c33b63"
+    "matrix_merged_commit": "899c6d95cc0205b1b7a327dda48095fc8bf94821",
+    "matrix_tree": "0af4dfdb3506cfe826ee53533f67eee88fb96389",
+    "matrix_runtime_material_commit": "52945123ec4d323c03eaafe216dce8a1d7e48565",
+    "matrix_runtime_material_tree": "0af4dfdb3506cfe826ee53533f67eee88fb96389",
+    "cluster_merged_commit": "49a919c836aec927f443857edabf34d37c9494e8",
+    "cluster_tree": "cb7254899230b5264313681617e445a4df0ef14f",
+    "cluster_reviewed_head": "417d8844c360265ade73c590cdf771a8c26b92fe",
+    "cluster_reviewed_head_tree": "cb7254899230b5264313681617e445a4df0ef14f"
   },
   "archive": {
     "format": "git-archive-tar",

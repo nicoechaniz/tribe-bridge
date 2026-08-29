@@ -42,10 +42,15 @@ locality and explicit Telegram visibility.
   `bcba9989a38519df87ecbb6c87a33a2f9740b85d`). The receipt binds the stable
   qualified source `8ce2c9d4c6b3e4e94108600d4170f169ced26303` (tree
   `0431882544ebd72bfbfbb343677b2557ea4fdbce`).
-- Matrix merged: `bf5f7415f075af09442973144bc529f4c5ce7985`
-  (tree `f38862427d5713b21ca9d0859a80ddbacfefa255`).
-- Cluster merged: `cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463`
-  (tree `4fb54bbc2ad1ac9c424686c6c1183c8144c33b63`).
+- Matrix PR #126 merged on `main` as
+  `899c6d95cc0205b1b7a327dda48095fc8bf94821` (tree
+  `0af4dfdb3506cfe826ee53533f67eee88fb96389`). Its exact reviewed runtime
+  material is `52945123ec4d323c03eaafe216dce8a1d7e48565`, with the same tree.
+- Cluster PR #101 merged on `main` as
+  `49a919c836aec927f443857edabf34d37c9494e8` (tree
+  `cb7254899230b5264313681617e445a4df0ef14f`). Its approved head
+  `417d8844c360265ade73c590cdf771a8c26b92fe` has the same tree and pins the
+  exact Matrix runtime material above.
 
 These references are provenance, not deployment evidence. The external
 integrated manifest records the final three repository heads after this
