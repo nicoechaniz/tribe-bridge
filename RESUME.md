@@ -6,7 +6,7 @@ service, host state, directory epoch, key custody or deployment is claimed by
 this checkpoint. Treat infrastructure references in historical evidence as
 non-current until a separate exact operational gate is approved.
 
-Last reconciled: 2026-08-20.
+Last reconciled: 2026-08-29.
 
 ## Exact integrated boundary
 
@@ -17,12 +17,15 @@ Last reconciled: 2026-08-20.
   `8ce2c9d4c6b3e4e94108600d4170f169ced26303`, tree
   `0431882544ebd72bfbfbb343677b2557ea4fdbce`; 148 tests completed with
   zero failures on every supported Python 3.10-3.13 interpreter.
-- Matrix is merged at commit
-  `bf5f7415f075af09442973144bc529f4c5ce7985`, tree
-  `f38862427d5713b21ca9d0859a80ddbacfefa255`.
-- Cluster is merged at commit
-  `cf31f9e99ea0be3d6c6c3bfc6fbdf764d5098463`, tree
-  `4fb54bbc2ad1ac9c424686c6c1183c8144c33b63`.
+- Matrix PR #126 is merged on `main` at
+  `899c6d95cc0205b1b7a327dda48095fc8bf94821`, tree
+  `0af4dfdb3506cfe826ee53533f67eee88fb96389`. Its exact reviewed runtime
+  material is `52945123ec4d323c03eaafe216dce8a1d7e48565`, with the same tree.
+- Cluster PR #101 is merged on `main` at
+  `49a919c836aec927f443857edabf34d37c9494e8`, tree
+  `cb7254899230b5264313681617e445a4df0ef14f`. Its exact approved head is
+  `417d8844c360265ade73c590cdf771a8c26b92fe`, with the same tree, and it pins
+  Matrix runtime material `52945123ec4d323c03eaafe216dce8a1d7e48565`.
 
 These hashes identify code and review boundaries only. They do not assert that
 any of the three components is deployed.
