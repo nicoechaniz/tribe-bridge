@@ -19,15 +19,17 @@ runtime material. These are code/provenance facts, not claims of deployment or
 live custody. The later external integrated manifest records the final
 metadata heads without creating a repository self-reference.
 
-## Role in the integrated release candidate
+## Superseded role in the integrated release candidate
 
-Tribe Bridge remains a narrow transitional carrier:
+Tribe Bridge is preserved as the qualified record of a narrow transitional
+carrier, but is no longer a Matrix release or migration gate:
 
 - it may prove authenticated encrypted transport, durable enqueue/deduplication,
   claim and receiver ACK;
 - it cannot prove Matrix authenticated recipient intake, relationship or grant
   consent, canonical event convergence, semantic processing or delivery;
 - it must not dual-write or become an ambiguous fallback for Matrix;
+- Matrix native qualification must succeed with Tribe completely absent;
 - it retains no v0 compatibility, history migration or downgrade path;
 - each audience epoch has one recipient policy, with no compatibility valve
   for an in-place observer mutation.
@@ -85,22 +87,22 @@ single-holder ceremony only as an explicitly synthetic fixture.
 
 None can be inferred from passing synthetic tests:
 
-- name real custody owners and independently provision each holder;
-- select the directory base/hash, activation waves, drain duration, canonical
-  publication channel and independently pinned provisioning authority;
-- obtain each participant's consent before contact or operation;
-- approve generation of real keys and each governance signature;
-- approve publication, client apply, service/timer installation, network
-  health checks and authenticated round trips;
-- define a content-addressed rollback/forward-recovery preflight and authorize
-  the exact effects;
+- obtain each participant's consent before Matrix contact or operation;
+- complete real Matrix custody, embodiment, continuity and recovery gates in
+  the Matrix roadmap rather than provisioning or rotating Tribe;
 - authorize any Matrix cross-being canary and obtain the other being's
   independent consent/custody;
-- authorize final Matrix cutover and eventual Tribe service/repository archive.
+- authorize final Matrix cutover;
+- authorize an exact inventory and deletion plan for any remaining Tribe
+  service and state;
+- separately authorize the final source-only Tribe release and read-only
+  repository archive.
 
 Until those gates are satisfied, the only honest claim is local reproducible
 preparation. No physical or distributed-custody guarantee follows from the
-synthetic holders.
+synthetic holders. Issues #56 and #59 are superseded as Matrix release gates by
+issue #71; expiring Tribe keys are allowed to expire rather than creating a
+new production dependency.
 
 The exact local suite, requirements and qualified source archive are recorded
 in [`release-candidate-receipt.json`](release-candidate-receipt.json). The
@@ -125,7 +127,9 @@ record-only commit is part of the qualified archive.
 
 ## Exit from the transitional role
 
-Archive or removal becomes eligible only after a separately approved Matrix
-release/cutover proves native cross-being operation, assigns retry/cursor
-ownership, preserves required evidence, and explicitly declares Tribe no
-longer needed. The exit path never resurrects v0 or adds dual write.
+Runtime removal becomes eligible after a separately approved Matrix
+birth/cutover proves native continuity, recovery and consented cross-being
+operation with Tribe absent. No Tribe state is migrated or retained. A later
+source-only release and read-only repository archive preserve public Git
+provenance after their own exact owner GO. The exit path never resurrects v0,
+adds dual write or requires compatibility.

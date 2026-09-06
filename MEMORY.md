@@ -2,10 +2,11 @@
 
 ## Current architecture boundary
 
-Tribe Bridge v1 is the repository's sole supported protocol and remains a
-transitional carrier while the integrated Matrix/Cluster release candidate is
-completed. This describes code, not a live deployment. No service, host,
-directory epoch or key custody is assumed current.
+Tribe Bridge v1 is the repository's sole implemented protocol, but the carrier
+is superseded and scheduled for retirement in favor of native Matrix
+communication. It is not a stable Matrix release gate. This describes code,
+not a live deployment. No service, host, directory epoch or key custody is
+assumed current.
 
 The implementation combines a governance-signed hash-chained directory,
 purpose-separated endpoint keys, encrypted canonical envelopes, durable
@@ -14,9 +15,13 @@ locality and explicit Telegram visibility.
 
 ## Durable decisions
 
-- v0 history is disposable and is not migrated or backed up.
+- All Tribe operational state is disposable and is not migrated or backed up:
+  this includes v0/v1 messages, queues, directories, keys, databases, profiles,
+  routes, timers and configuration. Public Git provenance is preserved.
 - No v0 compatibility, protocol negotiation, downgrade, dual read/write or
   rollback-to-v0 path exists.
+- Matrix qualification must run with Tribe absent; there is no fallback,
+  compatibility or dual-run phase.
 - An audience epoch has exactly one recipient policy. Observer changes create
   a successor epoch; runtime never accepts a compatibility flag to widen a
   retired epoch.
@@ -56,6 +61,8 @@ These references are provenance, not deployment evidence. The external
 integrated manifest records the final three repository heads after this
 metadata handoff merges; this file cannot name its own future merge commit.
 Canonical tracking lives in `nicoechaniz/tribe-bridge` issues and AlterMundi
-Project #8. Human
-approval is still required for real custody, participant contact, publication,
-provisioning, service changes, cutover and eventual retirement.
+Project #8. Human approval is still required for real Matrix custody,
+participant contact, publication and cutover. Tribe provisioning and rotation
+issues #56 and #59 are superseded by issue #71; exact human GOs remain required
+to remove any live experimental runtime and later archive this repository
+read-only.

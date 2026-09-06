@@ -8,7 +8,8 @@ starting baselines for the integrated work were Matrix
 `e855148ffac5b2f4068ba56be6324d7b78fb430f`, Cluster
 `734fd0037dcf84783ef7991415014af7435a46f2`, and Tribe
 `187c61d881e6de830a029027144193645f2c7f62`. They are provenance only, not
-current candidate pins.
+current candidate pins. Issue #71 subsequently records that the transitional
+carrier is superseded and its operational state is disposable.
 
 The merged Matrix integration point is PR #126 merge
 `899c6d95cc0205b1b7a327dda48095fc8bf94821`, tree
@@ -28,9 +29,10 @@ No current deployment is assumed. Read [`../RESUME.md`](../RESUME.md) and the
 Matrix repository `RESUME.md` before operational work. Tribe's
 `daimon-manifest/v1` is descriptive evidence only: it cannot authorize a
 Matrix action, override a Matrix root, or replace a root-authorized embodiment
-credential. Tribe remains a separately accounted transitional carrier; its
-transport ACK is neither authenticated Matrix intake nor a signed Matrix
-semantic receipt.
+credential. Tribe remains a separately accounted historical carrier until its
+runtime is removed; its transport ACK is neither authenticated Matrix intake
+nor a signed Matrix semantic receipt. Matrix qualification cannot depend on
+Tribe state or fallback.
 
 ## Interpretation boundary
 
@@ -66,17 +68,18 @@ model response, self-description, endpoint reachability, or secret reference.
 | `/me.memory` | HMK, LLM Wiki, HMK projection, collective publication endpoints | Per-endpoint memory ownership policy |
 | `/me.skills` and advertised capability | Evidence-bound capability entries | Descriptive only; policy still authorizes use |
 | `/me.body.*` | Realm/body/surface and capability ID references | Deployment descriptor |
-| `/tribe` | Tribe v1 explicit audiences plus GitHub coordination | Tribe for messages; GitHub for work ownership |
+| `/tribe` | Historical Tribe v1 explicit audiences; GitHub coordination remains independent | Tribe is superseded for messages; GitHub remains work ownership authority |
 | `/human` | Explicit human-scoped endpoint | Deployment-specific identity/consent |
 | `/all`, `/near`, `/here` | Declared communication scopes | No implicit membership, proximity, or authorization |
 | `/we.*`, `/source.pull`, `/species.pull.*` | Implemented by the exact installed `daimon-matrix` release candidate | Matrix root, signed history and observer-local policy; Tribe inventory entries remain descriptive only |
 
 HMK is private operational memory. An independently authored Wiki is
 authoritative for its documents. collective-memory is a reviewed downstream
-publication/index. GitHub Issues/Project/PRs own work coordination. Tribe v1
-owns its transitional encrypted transport/deduplication/ACK evidence; Matrix
-owns relationship/grant authority and canonical communication semantics. None
-replaces the others.
+publication/index. GitHub Issues/Project/PRs own work coordination. Preserved
+Tribe v1 evidence describes its former encrypted transport/deduplication/ACK
+boundary; Matrix owns relationship/grant authority and canonical communication
+semantics. Deleting Tribe operational state does not delete or migrate Matrix
+state.
 
 ## Trust domains and secret handling
 
@@ -150,7 +153,8 @@ post-restore capability probes remain separate evidence.
 - The CompAII example is a review candidate, not a deployed/live attestation.
 - Multiple agents still share one GitHub account.
 - No current Tribe deployment, directory epoch, custody or Matrix route is
-  claimed. Rotation/provisioning evidence is synthetic until separately gated.
+  claimed. Rotation/provisioning evidence is synthetic and is not promoted to
+  a live release gate; issues #56 and #59 are superseded by issue #71.
 - Collective-memory integration, proximity/realm controls and independent
   capability measurement remain separate work.
 - This repository's historical concept inventory is not a substitute for the
